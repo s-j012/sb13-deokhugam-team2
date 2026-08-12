@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: deokhugam
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  jpa:
+    open-in-view: false
+
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+
+deokhugam:
+  storage:
+    type: ${STORAGE_TYPE:local}
+
+    local:
+      root-path: ${STORAGE_LOCAL_ROOT_PATH:./storage}
+
+    s3:
+      region: ${AWS_S3_REGION:ap-northeast-2}
+      bucket: ${AWS_S3_BUCKET:}
+      presigned-url-expiration: ${AWS_S3_PRESIGNED_URL_EXPIRATION:600}
+
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    root: info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+    display-request-duration: true
+    doc-expansion: none
+
+  api-docs:
+    path: /api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+
+  endpoint:
+    health:
+      show-details: always
+
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Deokhugam
+    version: 0.0.1-SNAPSHOT
+    java-version: 17
+    spring-boot-version: 3.5.14
