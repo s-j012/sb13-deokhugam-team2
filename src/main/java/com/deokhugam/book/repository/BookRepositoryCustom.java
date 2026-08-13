@@ -8,4 +8,6 @@ public interface BookRepositoryCustom {
 
   List<BookSearchResult> findAllByCursor(BookSearchRequest request);
 
+  long countAll(BookSearchRequest request);
+
 }

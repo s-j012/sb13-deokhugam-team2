@@ -3,16 +3,19 @@ package com.deokhugam.book.service;
 import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.response.BookDto;
+import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -49,7 +52,42 @@ public class BasicBookService implements BookService {
 
   @Override
   public CursorPageResponse<BookDto> findAll(BookSearchRequest request) {
-    return null;
+
+    List<BookSearchResult> results = bookRepository.findAllByCursor(request);
+
+    boolean hasNext = results.size() > request.limit();
+
+    List<BookSearchResult> pageResults = hasNext ? results.subList(0, request.limit()) : results;
+
+    List<BookDto> content = pageResults.stream()
+        .map(result -> bookMapper.toDto(result.book()))
+        .toList();
+
+    String nextCursor = null;
+    LocalDateTime nextAfter = null;
+
+    if (hasNext && !pageResults.isEmpty()) {
+      Book lastBook = pageResults.get(pageResults.size() - 1).book();
+
+      nextCursor = switch (request.orderBy()) {
+        case "publishedDate" -> lastBook.getPublishedDate().toString();
+        case "title" -> lastBook.getTitle();
+        default -> lastBook.getTitle();
+      };
+
+      nextAfter = lastBook.getCreatedAt();
+    }
+
+    long totalElements = bookRepository.countAll(request);
+
+    return new CursorPageResponse<>(
+        content,
+        nextCursor,
+        nextAfter,
+        content.size(),
+        totalElements,
+        hasNext
+    );
   }
 
   @Override

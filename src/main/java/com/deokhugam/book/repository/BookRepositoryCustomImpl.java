@@ -4,6 +4,7 @@ import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.entity.Book;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -24,13 +25,11 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     boolean hasKeyword = request.keyword() != null && !request.keyword().isBlank();
 
     if (hasKeyword) {
-      jpql.append("""
-          AND (
-            LOWER(b.title) LIKE LOWER(:keyword)
-            OR LOWER(b.author) LIKE LOWER(:keyword)
-            OR b.isbn LIKE :keyword
-          )
-          """);
+      jpql.append(" AND (")
+          .append("LOWER(b.title) LIKE LOWER(:keyword)")
+          .append(" OR LOWER(b.author) LIKE LOWER(:keyword)")
+          .append(" OR b.isbn LIKE :keyword")
+          .append(")");
     }
 
     String sortField = switch (request.orderBy()) {
@@ -41,12 +40,53 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
 
     String direction = "desc".equalsIgnoreCase(request.direction()) ? "DESC" : "ASC";
 
-    jpql.append(" ORDER BY ").append(sortField).append(" ").append(direction);
+    boolean hasCursor = request.cursor() != null && !request.cursor().isBlank();
+
+    String operator = "DESC".equals(direction) ? "<" : ">";
+
+    if (hasCursor) {
+      jpql.append(" AND (")
+          .append(sortField)
+          .append(" ")
+          .append(operator)
+          .append(" :cursor");
+
+      if (request.after() != null) {
+        jpql.append(" OR (")
+            .append(sortField)
+            .append(" = :cursor AND b.createdAt ")
+            .append(operator)
+            .append(" :after)");
+      }
+
+      jpql.append(")");
+    }
+
+    jpql.append(" ORDER BY ")
+        .append(sortField)
+        .append(" ")
+        .append(direction)
+        .append(", b.createdAt ")
+        .append(direction);
 
     var query = entityManager.createQuery(jpql.toString(), Book.class);
 
     if (hasKeyword) {
       query.setParameter("keyword", "%" + request.keyword() + "%");
+    }
+
+    if (hasCursor) {
+      Object cursorValue = switch (request.orderBy()) {
+        case "publishedDate" -> LocalDate.parse(request.cursor());
+        case "title" -> request.cursor();
+        default -> request.cursor();
+      };
+
+      query.setParameter("cursor", cursorValue);
+
+      if (request.after() != null) {
+        query.setParameter("after", request.after());
+      }
     }
 
     if (request.limit() > 0) {
@@ -58,5 +98,34 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     return books.stream()
         .map(book -> new BookSearchResult(book, 0L, 0.0))
         .toList();
+  }
+
+  @Override
+  public long countAll(BookSearchRequest request) {
+
+    StringBuilder jpql = new StringBuilder(
+        "SELECT COUNT(b) FROM Book b WHERE b.deletedAt IS NULL"
+    );
+
+    boolean hasKeyword = request.keyword() != null && !request.keyword().isBlank();
+
+    if (hasKeyword) {
+      jpql.append(" AND (")
+          .append("LOWER(b.title) LIKE LOWER(:keyword)")
+          .append(" OR LOWER(b.author) LIKE LOWER(:keyword)")
+          .append(" OR b.isbn LIKE :keyword")
+          .append(")");
+    }
+
+    var query = entityManager.createQuery(jpql.toString(), Long.class);
+
+    if (hasKeyword) {
+      query.setParameter(
+          "keyword",
+          "%" + request.keyword() + "%"
+      );
+    }
+
+    return query.getSingleResult();
   }
 }
