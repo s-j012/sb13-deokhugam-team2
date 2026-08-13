@@ -1,4 +1,4 @@
 package com.deokhugam.review.dto.response;
 
-public record ReviewResponse() {
+public record ReviewListItemResponse() {
 }
