@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -65,6 +66,15 @@ public class BookController {
     BookDto bookDto = bookService.update(bookId, request, thumbnailImage);
 
     return ResponseEntity.ok(bookDto);
+  }
+
+  @DeleteMapping("/{bookId}")
+  public ResponseEntity<Void> delete(
+      @PathVariable UUID bookId
+  ) {
+    bookService.delete(bookId);
+
+    return ResponseEntity.noContent().build();
   }
 
 }

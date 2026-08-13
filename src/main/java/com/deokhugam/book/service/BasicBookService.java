@@ -111,7 +111,11 @@ public class BasicBookService implements BookService {
 
   @Override
   @Transactional
-  public void delete() {
+  public void delete(UUID bookId) {
 
+    Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
+        .orElseThrow(() -> new BookNotFoundException(bookId));
+
+    book.softDelete();
   }
 }

@@ -14,7 +14,7 @@ public interface BookService {
   BookDto findById(UUID bookId);
   CursorPageResponse<BookDto> findAll(BookSearchRequest request);
   BookDto update(UUID bookId, BookUpdateRequest request, MultipartFile thumbnailImage);
-  void delete();
+  void delete(UUID bookId);
 
 
 }
