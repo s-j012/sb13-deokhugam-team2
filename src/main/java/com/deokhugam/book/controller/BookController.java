@@ -2,6 +2,7 @@ package com.deokhugam.book.controller;
 
 import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
+import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.service.BasicBookService;
@@ -12,9 +13,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,6 +54,17 @@ public class BookController {
     CursorPageResponse<BookDto> response = bookService.findAll(request);
 
     return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping(value = "/{bookId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<BookDto> update(
+      @PathVariable UUID bookId,
+      @RequestPart("bookData") BookUpdateRequest request,
+      @RequestPart(value = "thumbnailImage", required = false) MultipartFile thumbnailImage
+  ) {
+    BookDto bookDto = bookService.update(bookId, request, thumbnailImage);
+
+    return ResponseEntity.ok(bookDto);
   }
 
 }

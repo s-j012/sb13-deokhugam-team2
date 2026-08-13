@@ -6,7 +6,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -42,6 +41,20 @@ public class Book extends SoftDeleteEntity {
     this.publisher = publisher;
     this.publishedDate = publishedDate;
     this.isbn = isbn;
+  }
+
+  public void update(
+      String title,
+      String author,
+      String description,
+      String publisher,
+      LocalDate publishedDate
+  ) {
+    this.title = title;
+    this.author = author;
+    this.description = description;
+    this.publisher = publisher;
+    this.publishedDate = publishedDate;
   }
 
 }

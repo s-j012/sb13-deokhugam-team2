@@ -2,6 +2,7 @@ package com.deokhugam.book.service;
 
 import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
+import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.dto.response.CursorPageResponse;
@@ -92,8 +93,20 @@ public class BasicBookService implements BookService {
 
   @Override
   @Transactional
-  public void update() {
+  public BookDto update(UUID bookId, BookUpdateRequest request, MultipartFile thumbnailImage) {
 
+    Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
+        .orElseThrow(() -> new BookNotFoundException(bookId));
+
+    book.update(
+        request.title(),
+        request.author(),
+        request.description(),
+        request.publisher(),
+        request.publisherDate()
+    );
+
+    return bookMapper.toDto(book);
   }
 
   @Override
