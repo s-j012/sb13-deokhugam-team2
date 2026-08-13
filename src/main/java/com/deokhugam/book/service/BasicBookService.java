@@ -1,7 +1,9 @@
 package com.deokhugam.book.service;
 
 import com.deokhugam.book.dto.request.BookCreateRequest;
+import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.response.BookDto;
+import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
@@ -46,8 +48,8 @@ public class BasicBookService implements BookService {
   }
 
   @Override
-  public void findAll() {
-
+  public CursorPageResponse<BookDto> findAll(BookSearchRequest request) {
+    return null;
   }
 
   @Override
