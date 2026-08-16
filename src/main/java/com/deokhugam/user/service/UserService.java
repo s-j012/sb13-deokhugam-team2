@@ -1,5 +1,6 @@
 package com.deokhugam.user.service;
 
+import com.deokhugam.global.exception.ErrorCode;
 import com.deokhugam.user.entity.Period;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.dto.response.CursorPageResponsePowerUserDto;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -32,7 +34,7 @@ public class UserService {
     @Transactional
     public UserDto register(UserRegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new UserExceptions.UserEmailDuplicateException("이미 사용중인 이메일입니다.");
+            throw new UserException(ErrorCode.EMAIL_DUPLICATION, Map.of("email", request.email()));
         }
         User user = User.create(request.email(), request.nickname(), request.password());
         User savedUser = userRepository.save(user);
@@ -42,10 +44,10 @@ public class UserService {
     public UserDto login(UserLoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .filter(u -> u.getDeletedAt() == null)
-                .orElseThrow(() -> new UserExceptions.UserLoginFailedException("이메일 또는 비밀번호가 일치하지 않습니다."));
+                .orElseThrow(() -> new UserException(ErrorCode.LOGIN_INPUT_INVALID));
 
         if (!user.getPassword().equals(request.password())) {
-            throw new UserExceptions.UserLoginFailedException("이메일 또는 비밀번호가 일치하지 않습니다.");
+            throw new UserException(ErrorCode.LOGIN_INPUT_INVALID);
         }
 
         return UserDto.from(user);
@@ -53,14 +55,14 @@ public class UserService {
 
     public UserDto getUser(UUID userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new UserExceptions.UserNotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND, Map.of("userId", userId)));
         return UserDto.from(user);
     }
 
     @Transactional
     public UserDto update(UUID userId, UserUpdateRequest request) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new UserExceptions.UserNotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND, Map.of("userId", userId)));
 
         user.updateNickname(request.nickname());
         return UserDto.from(user);
@@ -69,14 +71,14 @@ public class UserService {
     @Transactional
     public void softDelete(UUID userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new UserExceptions.UserNotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND, Map.of("userId", userId)));
         user.softDelete();
     }
 
     @Transactional
     public void hardDelete(UUID userId) {
         if (!userRepository.existsById(userId)) {
-            throw new UserExceptions.UserNotFoundException("사용자를 찾을 수 없습니다.");
+            throw new UserException(ErrorCode.USER_NOT_FOUND, Map.of("userId", userId));
         }
         userRepository.deleteById(userId);
     }
