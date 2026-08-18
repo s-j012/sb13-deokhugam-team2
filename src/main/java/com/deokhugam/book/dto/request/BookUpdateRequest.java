@@ -8,7 +8,7 @@ public record BookUpdateRequest(
     String author,
     String description,
     String publisher,
-    LocalDate publisherDate
+    LocalDate publishedDate
 ) {
 
 }

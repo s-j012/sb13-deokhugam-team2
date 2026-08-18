@@ -103,7 +103,7 @@ public class BasicBookService implements BookService {
         request.author(),
         request.description(),
         request.publisher(),
-        request.publisherDate()
+        request.publishedDate()
     );
 
     return bookMapper.toDto(book);
