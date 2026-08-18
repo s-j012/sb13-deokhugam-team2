@@ -38,7 +38,7 @@ public class GlobalExceptionHandler {
         .badRequest()
         .body(ErrorResponse.of(
             HttpStatus.BAD_REQUEST.value(),
-            "INVALID_INPUR_VALUE",
+            "INVALID_INPUT_VALUE",
             "MethodArgumentNotValidException",
              errorMessage,
              Map.of()

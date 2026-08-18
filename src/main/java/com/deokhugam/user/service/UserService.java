@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Slice;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +31,18 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public UserDto register(UserRegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new UserException(ErrorCode.EMAIL_DUPLICATION, Map.of("email", request.email()));
         }
-        User user = User.create(request.email(), request.nickname(), request.password());
+
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(request.password());
+
+        User user = User.create(request.email(), request.nickname(), encodedPassword);
         User savedUser = userRepository.save(user);
         return UserDto.from(savedUser);
     }
@@ -46,7 +52,7 @@ public class UserService {
                 .filter(u -> u.getDeletedAt() == null)
                 .orElseThrow(() -> new UserException(ErrorCode.LOGIN_INPUT_INVALID));
 
-        if (!user.getPassword().equals(request.password())) {
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new UserException(ErrorCode.LOGIN_INPUT_INVALID);
         }
 

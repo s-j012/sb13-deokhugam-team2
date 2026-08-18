@@ -1,8 +1,8 @@
 package com.deokhugam.user.entity;
 
 public enum Period {
-    Daily,
-    Weekly,
-    Monthly,
+    DAILY,
+    WEEKLY,
+    MONTHLY,
     ALL_TIME
 }
