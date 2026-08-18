@@ -15,14 +15,14 @@ spring:
 
 deokhugam:
   storage:
-    type: ${STORAGE_TYPE:s3}
+    type: ${STORAGE_TYPE:local}
 
     local:
       root-path: ${STORAGE_LOCAL_ROOT_PATH:./storage}
 
     s3:
       region: ${AWS_S3_REGION:ap-northeast-2}
-      bucket: ${AWS_S3_BUCKET:deokhugam-book-storage-csw-803874683226-ap-northeast-2-an}
+      bucket: ${AWS_S3_BUCKET:}
       presigned-url-expiration: ${AWS_S3_PRESIGNED_URL_EXPIRATION:600}
 
 server:
