@@ -14,7 +14,7 @@ application-secret.yml
 application-*.secret.yml
 
 ### Local storage ###
-storage/
+/storage/
 
 ### Logs ###
 logs/

@@ -2,7 +2,10 @@ package com.deokhugam.book.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +21,7 @@ import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.global.storage.Storage;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class BasicBookServiceTest {
@@ -39,6 +44,9 @@ class BasicBookServiceTest {
 
   @Mock
   private BookMapper bookMapper;
+
+  @Mock
+  Storage storage;
 
   @InjectMocks
   private BasicBookService basicBookService;
@@ -90,7 +98,7 @@ class BasicBookServiceTest {
     when(bookRepository.existsByIsbn(request.isbn())).thenReturn(false);
     when(bookMapper.toEntity(request)).thenReturn(book);
     when(bookRepository.save(book)).thenReturn(savedBook);
-    when(bookMapper.toDto(savedBook)).thenReturn(expected);
+    when(bookMapper.toDto(savedBook, null)).thenReturn(expected);
 
     BookDto result = basicBookService.create(request, null);
 
@@ -111,6 +119,55 @@ class BasicBookServiceTest {
 
     verify(bookRepository).existsByIsbn(request.isbn());
     verify(bookRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("썸네일과 함께 도서를 등록한다")
+  void createBookWithThumbnail() {
+    MultipartFile thumbnailImage = mock(MultipartFile.class);
+
+    Book book = new Book(
+        request.title(),
+        request.author(),
+        request.description(),
+        request.publisher(),
+        request.publishedDate(),
+        request.isbn()
+    );
+
+    BookDto expected = new BookDto(
+        UUID.randomUUID(),
+        request.title(),
+        request.author(),
+        request.description(),
+        request.publisher(),
+        request.publishedDate(),
+        request.isbn(),
+        "https://example.com/thumbnail.jpg",
+        0,
+        0.0,
+        null,
+        null
+    );
+
+    when(bookRepository.existsByIsbn(request.isbn())).thenReturn(false);
+    when(bookMapper.toEntity(request)).thenReturn(book);
+    when(thumbnailImage.isEmpty()).thenReturn(false);
+    when(storage.upload(thumbnailImage))
+        .thenReturn("book-thumbnails/test.jpg");
+    when(bookRepository.save(book)).thenReturn(book);
+    when(storage.getUrl("book-thumbnails/test.jpg"))
+        .thenReturn("https://example.com/thumbnail.jpg");
+    when(bookMapper.toDto(book, "https://example.com/thumbnail.jpg"))
+        .thenReturn(expected);
+
+    BookDto result = basicBookService.create(request, thumbnailImage);
+
+    assertEquals(expected, result);
+    assertEquals("book-thumbnails/test.jpg", book.getThumbnailUrl());
+
+    verify(storage).upload(thumbnailImage);
+    verify(storage).getUrl("book-thumbnails/test.jpg");
   }
 
   @Test
@@ -146,7 +203,7 @@ class BasicBookServiceTest {
     when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
         .thenReturn(Optional.of(book));
 
-    when(bookMapper.toDto(book))
+    when(bookMapper.toDto(book, null))
         .thenReturn(expected);
 
     BookDto result = basicBookService.findById(bookId);
@@ -169,7 +226,7 @@ class BasicBookServiceTest {
         .isInstanceOf(BookNotFoundException.class);
 
     verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
-    verify(bookMapper, never()).toDto(org.mockito.ArgumentMatchers.any());
+    verify(bookMapper, never()).toDto(any(Book.class), nullable(String.class));
   }
 
   @Test
@@ -213,7 +270,7 @@ class BasicBookServiceTest {
     when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
         .thenReturn(Optional.of(book));
 
-    when(bookMapper.toDto(book))
+    when(bookMapper.toDto(book, null))
         .thenReturn(expected);
 
     BookDto result = basicBookService.update(
@@ -233,7 +290,7 @@ class BasicBookServiceTest {
     assertThat(book.getIsbn()).isEqualTo("9788960777330");
 
     verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
-    verify(bookMapper).toDto(book);
+    verify(bookMapper).toDto(book, null);
   }
 
   @Test
@@ -355,10 +412,10 @@ class BasicBookServiceTest {
     when(bookRepository.findAllByCursor(request))
         .thenReturn(results);
 
-    when(bookMapper.toDto(book1))
+    when(bookMapper.toDto(book1, null))
         .thenReturn(dto1);
 
-    when(bookMapper.toDto(book2))
+    when(bookMapper.toDto(book2, null))
         .thenReturn(dto2);
 
     when(bookRepository.countAll(request))

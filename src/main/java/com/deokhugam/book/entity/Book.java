@@ -57,4 +57,8 @@ public class Book extends SoftDeleteEntity {
     this.publishedDate = publishedDate;
   }
 
+  public void updateThumbnailUrl(String thumbnailUrl) {
+    this.thumbnailUrl = thumbnailUrl;
+  }
+
 }
