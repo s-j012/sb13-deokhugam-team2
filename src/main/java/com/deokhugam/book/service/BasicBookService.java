@@ -4,14 +4,19 @@ import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
+import com.deokhugam.book.dto.response.BookInfoResponse;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.entity.Book;
+import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.kakao.KakaoBookClient;
+import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.global.storage.Storage;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +33,7 @@ public class BasicBookService implements BookService {
   private final BookRepository bookRepository;
   private final BookMapper bookMapper;
   private final Storage storage;
+  private final KakaoBookClient kakaoBookClient;
 
   @Override
   @Transactional
@@ -145,5 +151,30 @@ public class BasicBookService implements BookService {
     }
 
     return bookMapper.toDto(book, thumbnailUrl);
+  }
+
+  @Override
+  public BookInfoResponse findBookInfoByIsbn(String isbn) {
+    KakaoBookSearchResponse response = kakaoBookClient.searchByIsbn(isbn);
+
+    if (response == null || response.documents() == null || response.documents().isEmpty()) {
+      throw new BookInfoNotFoundException(isbn);
+    }
+
+    KakaoBookSearchResponse.Document document = response.documents().get(0);
+
+    String author = String.join(", ", document.authors());
+
+    LocalDate publishedDate = document.datetime() != null ? document.datetime().toLocalDate() : null;
+
+    return new BookInfoResponse(
+        document.title(),
+        author,
+        document.contents(),
+        document.publisher(),
+        publishedDate,
+        isbn,
+        document.thumbnail()
+    );
   }
 }

@@ -1,13 +1,13 @@
 package com.deokhugam.global.exception;
 
 import com.deokhugam.global.response.ErrorResponse;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.Map;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -42,6 +42,27 @@ public class GlobalExceptionHandler {
             "MethodArgumentNotValidException",
              errorMessage,
              Map.of()
+        ));
+  }
+
+  @ExceptionHandler(HandlerMethodValidationException.class)
+  public ResponseEntity<ErrorResponse> handleHandlerMethodValidationException(
+      HandlerMethodValidationException e
+  ) {
+    String errorMessage = e.getAllErrors().stream()
+        .map(error -> error.getDefaultMessage())
+        .filter(message -> message != null && !message.isBlank())
+        .findFirst()
+        .orElse("요청 값이 올바르지 않습니다.");
+
+    return ResponseEntity
+        .badRequest()
+        .body(ErrorResponse.of(
+            HttpStatus.BAD_REQUEST.value(),
+            "INVALID_INPUT_VALUE",
+            "HandlerMethodValidationException",
+            errorMessage,
+            Map.of()
         ));
   }
 

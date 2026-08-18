@@ -4,9 +4,11 @@ import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
+import com.deokhugam.book.dto.response.BookInfoResponse;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.service.BasicBookService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -76,6 +79,18 @@ public class BookController {
     bookService.delete(bookId);
 
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/info")
+  public ResponseEntity<BookInfoResponse> findBookInfoByIsbn(
+      @RequestParam
+      @Pattern(
+          regexp = "^(?:\\d{9}[\\dXx]|\\d{13})$",
+          message = "ISBN은 10자리 또는 13자리 형식이어야 합니다."
+      )
+      String isbn
+  ) {
+    return ResponseEntity.ok(bookService.findBookInfoByIsbn(isbn));
   }
 
 }

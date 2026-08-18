@@ -3,6 +3,7 @@ package com.deokhugam.book.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
@@ -14,16 +15,21 @@ import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
+import com.deokhugam.book.dto.response.BookInfoResponse;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.entity.Book;
+import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.kakao.KakaoBookClient;
+import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.global.storage.Storage;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,6 +58,9 @@ class BasicBookServiceTest {
   private BasicBookService basicBookService;
 
   private BookCreateRequest request;
+
+  @Mock
+  KakaoBookClient kakaoBookClient;
 
   @BeforeEach
   void setUp() {
@@ -431,5 +440,53 @@ class BasicBookServiceTest {
 
     verify(bookRepository).findAllByCursor(request);
     verify(bookRepository).countAll(request);
+  }
+
+  @Test
+  @DisplayName("ISBN으로 도서 정보를 조회한다.")
+  void findBookInfoByIsbn() {
+    String isbn = "9788960777330";
+
+    KakaoBookSearchResponse.Document document =
+        new KakaoBookSearchResponse.Document(
+            "자바 ORM 표준 JPA 프로그래밍",
+            "JPA 학습용 도서",
+            isbn,
+            OffsetDateTime.parse("2015-07-28T00:00:00+09:00"),
+            List.of("김영한"),
+            "에이콘출판",
+            "https://example.com/thumbnail.jpg"
+        );
+
+    KakaoBookSearchResponse response =
+        new KakaoBookSearchResponse(List.of(document));
+
+    when(kakaoBookClient.searchByIsbn(isbn))
+        .thenReturn(response);
+
+    BookInfoResponse result =
+        basicBookService.findBookInfoByIsbn(isbn);
+
+    assertEquals("자바 ORM 표준 JPA 프로그래밍", result.title());
+    assertEquals("김영한", result.author());
+    assertEquals(isbn, result.isbn());
+    assertEquals(
+        LocalDate.of(2015, 7, 28),
+        result.publishedDate()
+    );
+  }
+
+  @Test
+  @DisplayName("ISBN으로 조회한 도서가 없으면 예외가 발생한다.")
+  void findBookInfoByIsbnNotFound() {
+    String isbn = "9780000000000";
+
+    when(kakaoBookClient.searchByIsbn(isbn))
+        .thenReturn(new KakaoBookSearchResponse(List.of()));
+
+    assertThrows(
+        BookInfoNotFoundException.class,
+        () -> basicBookService.findBookInfoByIsbn(isbn)
+    );
   }
 }
