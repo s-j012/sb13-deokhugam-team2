@@ -65,6 +65,6 @@ public class LocalStorage implements Storage {
 
   @Override
   public String getUrl(String path) {
-    return path;
+    return "/storage/" + path;
   }
 }

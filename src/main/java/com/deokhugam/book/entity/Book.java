@@ -1,6 +1,7 @@
 package com.deokhugam.book.entity;
 
 import com.deokhugam.global.entity.SoftDeleteEntity;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,6 +22,7 @@ public class Book extends SoftDeleteEntity {
   private UUID id;
   private String title;
   private String author;
+  @Column(length = 1000)
   private String description;
   private String publisher;
   private LocalDate publishedDate;
