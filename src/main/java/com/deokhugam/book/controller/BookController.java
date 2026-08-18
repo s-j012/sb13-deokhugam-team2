@@ -6,6 +6,7 @@ import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.service.BasicBookService;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,7 +32,7 @@ public class BookController {
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<BookDto> create(
-      @RequestPart("bookData") BookCreateRequest request,
+      @RequestPart("bookData") @Valid BookCreateRequest request,
       @RequestPart(value = "thumbnailImage", required = false) MultipartFile thumbnailImage) {
 
     BookDto bookDto = bookService.create(request, thumbnailImage);
@@ -50,7 +51,7 @@ public class BookController {
 
   @GetMapping
   public ResponseEntity<CursorPageResponse<BookDto>> findAll(
-      @ModelAttribute BookSearchRequest request
+      @Valid @ModelAttribute BookSearchRequest request
   ) {
     CursorPageResponse<BookDto> response = bookService.findAll(request);
 
@@ -60,7 +61,7 @@ public class BookController {
   @PatchMapping(value = "/{bookId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<BookDto> update(
       @PathVariable UUID bookId,
-      @RequestPart("bookData") BookUpdateRequest request,
+      @RequestPart("bookData") @Valid BookUpdateRequest request,
       @RequestPart(value = "thumbnailImage", required = false) MultipartFile thumbnailImage
   ) {
     BookDto bookDto = bookService.update(bookId, request, thumbnailImage);

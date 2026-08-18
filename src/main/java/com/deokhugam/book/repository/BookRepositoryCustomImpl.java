@@ -3,6 +3,8 @@ package com.deokhugam.book.repository;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.entity.Book;
+import com.deokhugam.book.enums.BookSortField;
+import com.deokhugam.book.enums.SortDirection;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,28 +34,31 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
           .append(")");
     }
 
-    String sortField = switch (request.orderBy()) {
-      case "publishedDate" -> "b.publishedDate";
-      case "title" -> "b.title";
+    BookSortField sortField = BookSortField.from(request.orderBy());
+    SortDirection sortDirection = SortDirection.from(request.direction());
+
+    String sortFieldPath = switch (sortField) {
+      case PUBLISHED_DATE -> "b.publishedDate";
+      case TITLE -> "b.title";
       default -> "b.title";
     };
 
-    String direction = "desc".equalsIgnoreCase(request.direction()) ? "DESC" : "ASC";
+    String direction = sortDirection.name();
 
     boolean hasCursor = request.cursor() != null && !request.cursor().isBlank();
 
-    String operator = "DESC".equals(direction) ? "<" : ">";
+    String operator = sortDirection == SortDirection.DESC ? "<" : ">";
 
     if (hasCursor) {
       jpql.append(" AND (")
-          .append(sortField)
+          .append(sortFieldPath)
           .append(" ")
           .append(operator)
           .append(" :cursor");
 
       if (request.after() != null) {
         jpql.append(" OR (")
-            .append(sortField)
+            .append(sortFieldPath)
             .append(" = :cursor AND b.createdAt ")
             .append(operator)
             .append(" :after)");
@@ -63,7 +68,7 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     }
 
     jpql.append(" ORDER BY ")
-        .append(sortField)
+        .append(sortFieldPath)
         .append(" ")
         .append(direction)
         .append(", b.createdAt ")
@@ -76,9 +81,9 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     }
 
     if (hasCursor) {
-      Object cursorValue = switch (request.orderBy()) {
-        case "publishedDate" -> LocalDate.parse(request.cursor());
-        case "title" -> request.cursor();
+      Object cursorValue = switch (sortField) {
+        case PUBLISHED_DATE -> LocalDate.parse(request.cursor());
+        case TITLE -> request.cursor();
         default -> request.cursor();
       };
 
@@ -89,9 +94,7 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
       }
     }
 
-    if (request.limit() > 0) {
-      query.setMaxResults(request.limit() + 1);
-    }
+    query.setMaxResults(request.limit() + 1);
 
     List<Book> books = query.getResultList();
 
