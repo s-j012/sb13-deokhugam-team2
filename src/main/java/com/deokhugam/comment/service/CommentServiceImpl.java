@@ -1,11 +1,11 @@
-package com.codeit.deokhugammission.comment.service;
+package com.deokhugam.comment.service;
 
-import com.codeit.deokhugammission.comment.dto.request.CommentCreateRequest;
-import com.codeit.deokhugammission.comment.dto.request.CommentUpdateRequest;
-import com.codeit.deokhugammission.comment.dto.response.CommentListResponse;
-import com.codeit.deokhugammission.comment.dto.response.CommentResponse;
-import com.codeit.deokhugammission.comment.entity.Comment;
-import com.codeit.deokhugammission.comment.repository.CommentRepository;
+import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentUpdateRequest;
+import com.deokhugam.comment.dto.response.CommentListResponse;
+import com.deokhugam.comment.dto.response.CommentResponse;
+import com.deokhugam.comment.entity.Comment;
+import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
 import java.time.LocalDateTime;

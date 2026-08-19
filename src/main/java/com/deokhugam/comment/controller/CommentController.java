@@ -1,10 +1,10 @@
-package com.codeit.deokhugammission.comment.controller;
+package com.deokhugam.comment.controller;
 
-import com.codeit.deokhugammission.comment.dto.request.CommentCreateRequest;
-import com.codeit.deokhugammission.comment.dto.request.CommentUpdateRequest;
-import com.codeit.deokhugammission.comment.dto.response.CommentListResponse;
-import com.codeit.deokhugammission.comment.dto.response.CommentResponse;
-import com.codeit.deokhugammission.comment.service.CommentService;
+import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentUpdateRequest;
+import com.deokhugam.comment.dto.response.CommentListResponse;
+import com.deokhugam.comment.dto.response.CommentResponse;
+import com.deokhugam.comment.service.CommentService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.UUID;

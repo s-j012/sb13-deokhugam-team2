@@ -1,6 +1,6 @@
-package com.codeit.deokhugammission.comment.dto.response;
+package com.deokhugam.comment.dto.response;
 
-import com.codeit.deokhugammission.comment.entity.Comment;
+import com.deokhugam.comment.entity.Comment;
 import java.time.LocalDateTime;
 import java.util.UUID;
 

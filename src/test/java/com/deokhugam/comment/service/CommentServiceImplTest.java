@@ -6,12 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.codeit.deokhugammission.comment.dto.request.CommentCreateRequest;
-import com.codeit.deokhugammission.comment.dto.request.CommentUpdateRequest;
-import com.codeit.deokhugammission.comment.dto.response.CommentResponse;
-import com.codeit.deokhugammission.comment.entity.Comment;
-import com.codeit.deokhugammission.comment.repository.CommentRepository;
-import com.codeit.deokhugammission.comment.service.CommentServiceImpl;
+import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentUpdateRequest;
+import com.deokhugam.comment.dto.response.CommentResponse;
+import com.deokhugam.comment.entity.Comment;
+import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
 import java.util.Optional;

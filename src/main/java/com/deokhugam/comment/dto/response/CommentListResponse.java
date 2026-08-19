@@ -1,4 +1,4 @@
-package com.codeit.deokhugammission.comment.dto.response;
+package com.deokhugam.comment.dto.response;
 
 import java.util.List;
 

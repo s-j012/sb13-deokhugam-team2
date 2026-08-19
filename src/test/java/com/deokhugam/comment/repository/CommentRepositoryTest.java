@@ -2,8 +2,7 @@ package com.deokhugam.comment.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.codeit.deokhugammission.comment.entity.Comment;
-import com.codeit.deokhugammission.comment.repository.CommentRepository;
+import com.deokhugam.comment.entity.Comment;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;

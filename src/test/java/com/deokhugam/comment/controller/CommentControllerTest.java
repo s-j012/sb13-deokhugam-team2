@@ -12,12 +12,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.codeit.deokhugammission.comment.controller.CommentController;
-import com.codeit.deokhugammission.comment.dto.request.CommentCreateRequest;
-import com.codeit.deokhugammission.comment.dto.request.CommentUpdateRequest;
-import com.codeit.deokhugammission.comment.dto.response.CommentListResponse;
-import com.codeit.deokhugammission.comment.dto.response.CommentResponse;
-import com.codeit.deokhugammission.comment.service.CommentService;
+import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentUpdateRequest;
+import com.deokhugam.comment.dto.response.CommentListResponse;
+import com.deokhugam.comment.dto.response.CommentResponse;
+import com.deokhugam.comment.service.CommentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDateTime;

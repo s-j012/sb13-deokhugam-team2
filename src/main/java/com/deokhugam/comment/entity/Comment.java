@@ -1,4 +1,4 @@
-package com.codeit.deokhugammission.comment.entity;
+package com.deokhugam.comment.entity;
 
 import com.deokhugam.global.entity.SoftDeleteEntity;
 import jakarta.persistence.Column;
