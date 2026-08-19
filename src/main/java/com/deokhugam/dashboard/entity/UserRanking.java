@@ -41,6 +41,15 @@ public class UserRanking extends BaseEntity {
   @Column(name = "base_date", nullable = false)
   private LocalDate baseDate;
 
+  @Column(nullable = false)
+  private double reviewScoreSum;
+
+  @Column(nullable = false)
+  private int likeCount;
+
+  @Column(nullable = false)
+  private int commentCount;
+
   @Builder
   public UserRanking(UUID userId, PeriodType periodType, int ranking, double score, LocalDate baseDate) {
     this.userId = userId;
