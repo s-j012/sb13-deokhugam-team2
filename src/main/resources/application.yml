@@ -25,6 +25,9 @@ deokhugam:
       bucket: ${AWS_S3_BUCKET:}
       presigned-url-expiration: ${AWS_S3_PRESIGNED_URL_EXPIRATION:600}
 
+  kakao:
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+
 server:
   port: ${PORT:8080}
 
