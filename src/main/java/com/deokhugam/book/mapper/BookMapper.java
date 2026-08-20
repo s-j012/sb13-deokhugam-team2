@@ -25,12 +25,12 @@ public interface BookMapper {
   }
 
   @Mapping(target = "thumbnailUrl", source = "thumbnailUrl")
-  @Mapping(target = "reviewCount", constant = "reviewCount")
-  @Mapping(target = "rating", constant = "rating")
+  @Mapping(target = "reviewCount", source = "reviewCount")
+  @Mapping(target = "rating", source = "rating")
   BookDto toDto(
       Book book,
       String thumbnailUrl,
       int reviewCount,
-      double rating);
-
+      double rating
+  );
 }
