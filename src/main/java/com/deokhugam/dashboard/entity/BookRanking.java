@@ -33,7 +33,7 @@ public class BookRanking extends BaseEntity {
   private PeriodType periodType;
 
   @Column(nullable = false)
-  private int ranking;
+  private long ranking;
 
   @Column(nullable = false)
   private double score;
@@ -42,13 +42,13 @@ public class BookRanking extends BaseEntity {
   private LocalDate baseDate;
 
   @Column(nullable = false)
-  private int reviewCount;
+  private long reviewCount;
 
   @Column(nullable = false)
   private double rating;
 
   @Builder
-  public BookRanking(UUID bookId, PeriodType periodType, int ranking, double score, LocalDate baseDate, int reviewCount, double rating) {
+  public BookRanking(UUID bookId, PeriodType periodType, long ranking, double score, LocalDate baseDate, long reviewCount, double rating) {
     this.bookId = bookId;
     this.periodType = periodType;
     this.ranking = ranking;

@@ -33,7 +33,7 @@ public class ReviewRanking extends BaseEntity {
   private PeriodType periodType;
 
   @Column(nullable = false)
-  private int ranking;
+  private long ranking;
 
   @Column(nullable = false)
   private double score;
@@ -42,13 +42,13 @@ public class ReviewRanking extends BaseEntity {
   private LocalDate baseDate;
 
   @Column(nullable = false)
-  private int likeCount;
+  private long likeCount;
 
   @Column(nullable = false)
-  private int commentCount;
+  private long commentCount;
 
   @Builder
-  public ReviewRanking(UUID reviewId, PeriodType periodType, int ranking, double score, LocalDate baseDate, int likeCount, int commentCount) {
+  public ReviewRanking(UUID reviewId, PeriodType periodType, long ranking, double score, LocalDate baseDate, long likeCount, long commentCount) {
     this.reviewId = reviewId;
     this.periodType = periodType;
     this.ranking = ranking;
