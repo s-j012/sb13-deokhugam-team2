@@ -118,7 +118,7 @@ public class BasicBookService implements BookService {
   public BookDto update(UUID bookId, BookUpdateRequest request, MultipartFile thumbnailImage) {
 
     BookSearchResult result = bookRepository.findByIdWithReviewStats(bookId)
-            .orElseThrow(() -> new BookNotFoundException(bookId));
+        .orElseThrow(() -> new BookNotFoundException(bookId));
 
     Book book = result.book();
 
@@ -185,7 +185,8 @@ public class BasicBookService implements BookService {
 
     String author = String.join(", ", document.authors());
 
-    LocalDate publishedDate = document.datetime() != null ? document.datetime().toLocalDate() : null;
+    LocalDate publishedDate =
+        document.datetime() != null ? document.datetime().toLocalDate() : null;
 
     String thumbnailImage =
         googleBookClient.findThumbnailBase64ByIsbn(isbn);

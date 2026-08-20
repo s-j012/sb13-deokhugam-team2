@@ -24,13 +24,13 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
 
     StringBuilder jpql = new StringBuilder(
         """
-        SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
-        FROM Book b
-        LEFT JOIN Review r
-            ON r.book = b
-            AND r.deletedAt IS NULL
-        WHERE b.deletedAt IS NULL
-        """
+            SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
+            FROM Book b
+            LEFT JOIN Review r
+                ON r.book = b
+                AND r.deletedAt IS NULL
+            WHERE b.deletedAt IS NULL
+            """
     );
 
     boolean hasKeyword = request.keyword() != null && !request.keyword().isBlank();
@@ -175,15 +175,15 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
   public Optional<BookSearchResult> findByIdWithReviewStats(UUID bookId) {
 
     String jpql = """      
-        SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
-      FROM Book b
-      LEFT JOIN Review r
-          ON r.book = b
-          AND r.deletedAt IS NULL
-      WHERE b.id = :bookId
-        AND b.deletedAt IS NULL
-      GROUP BY b
-      """;
+          SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
+        FROM Book b
+        LEFT JOIN Review r
+            ON r.book = b
+            AND r.deletedAt IS NULL
+        WHERE b.id = :bookId
+          AND b.deletedAt IS NULL
+        GROUP BY b
+        """;
 
     List<Object[]> results = entityManager
         .createQuery(jpql, Object[].class)

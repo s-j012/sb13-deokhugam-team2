@@ -16,5 +16,6 @@ public record KakaoBookSearchResponse(
       String publisher,
       String thumbnail
   ) {
+
   }
 }
