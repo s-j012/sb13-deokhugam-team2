@@ -14,9 +14,9 @@ public record PopularBookDto(
     String author,           // 저자명
     String thumbnailUrl,     // 도서 썸네일 이미지 URL
     PeriodType period,       // 랭킹 산출 기간 (DAILY, WEEKLY, MONTHLY, ALL_TIME)
-    long rank,                // 순위
+    long rank,               // 순위
     double score,            // 대시보드 점수 (리뷰 수 * 0.4 + 평점 평균 * 0.6)
-    long reviewCount,         // 도서에 작성된 리뷰 총 개수
+    long reviewCount,        // 도서에 작성된 리뷰 총 개수
     double rating,           // 도서의 평균 평점
     LocalDateTime createdAt  // 랭킹 데이터 생성 일시
 ) {

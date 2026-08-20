@@ -18,10 +18,10 @@ public record PopularReviewDto(
     String reviewContent,    // 리뷰 본문 내용
     double reviewRating,     // 리뷰어가 남긴 평점
     PeriodType period,       // 랭킹 산출 기간 (DAILY, WEEKLY, MONTHLY, ALL_TIME)
-    long rank,                // 순위
+    long rank,               // 순위
     double score,            // 대시보드 점수 (좋아요 수 * 0.3 + 댓글 수 * 0.7)
-    long likeCount,           // 리뷰가 받은 좋아요 총 개수
-    long commentCount,        // 리뷰에 달린 댓글 총 개수
+    long likeCount,          // 리뷰가 받은 좋아요 총 개수
+    long commentCount,       // 리뷰에 달린 댓글 총 개수
     LocalDateTime createdAt  // 랭킹 데이터 생성 일시
 ) {
 }
