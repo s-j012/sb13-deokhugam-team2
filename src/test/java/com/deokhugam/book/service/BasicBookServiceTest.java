@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -22,6 +24,7 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
@@ -61,6 +64,9 @@ class BasicBookServiceTest {
 
   @Mock
   KakaoBookClient kakaoBookClient;
+
+  @Mock
+  GoogleBookClient googleBookClient;
 
   @BeforeEach
   void setUp() {
@@ -107,7 +113,12 @@ class BasicBookServiceTest {
     when(bookRepository.existsByIsbn(request.isbn())).thenReturn(false);
     when(bookMapper.toEntity(request)).thenReturn(book);
     when(bookRepository.save(book)).thenReturn(savedBook);
-    when(bookMapper.toDto(savedBook, null)).thenReturn(expected);
+    when(bookMapper.toDto(
+        book,
+        null,
+        0,
+        0.0
+    )).thenReturn(expected);
 
     BookDto result = basicBookService.create(request, null);
 
@@ -167,8 +178,12 @@ class BasicBookServiceTest {
     when(bookRepository.save(book)).thenReturn(book);
     when(storage.getUrl("book-thumbnails/test.jpg"))
         .thenReturn("https://example.com/thumbnail.jpg");
-    when(bookMapper.toDto(book, "https://example.com/thumbnail.jpg"))
-        .thenReturn(expected);
+    when(bookMapper.toDto(
+        book,
+        "https://example.com/thumbnail.jpg",
+        0,
+        0.0
+    )).thenReturn(expected);
 
     BookDto result = basicBookService.create(request, thumbnailImage);
 
@@ -209,17 +224,24 @@ class BasicBookServiceTest {
         LocalDateTime.now()
     );
 
-    when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
-        .thenReturn(Optional.of(book));
+    BookSearchResult searchResult =
+        new BookSearchResult(book, 2L, 4.5);
 
-    when(bookMapper.toDto(book, null))
-        .thenReturn(expected);
+    when(bookRepository.findByIdWithReviewStats(bookId))
+        .thenReturn(Optional.of(searchResult));
+
+    when(bookMapper.toDto(
+        book,
+        null,
+        2,
+        4.5
+    )).thenReturn(expected);
 
     BookDto result = basicBookService.findById(bookId);
 
     assertThat(result).isEqualTo(expected);
 
-    verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
+    verify(bookRepository).findByIdWithReviewStats(bookId);
   }
 
   @Test
@@ -228,15 +250,19 @@ class BasicBookServiceTest {
 
     UUID bookId = UUID.randomUUID();
 
-    when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
+    when(bookRepository.findByIdWithReviewStats(bookId))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> basicBookService.findById(bookId))
         .isInstanceOf(BookNotFoundException.class);
 
-    verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
-    verify(bookMapper, never()).toDto(any(Book.class), nullable(String.class));
-  }
+    verify(bookRepository).findByIdWithReviewStats(bookId);
+    verify(bookMapper, never()).toDto(
+        any(Book.class),
+        nullable(String.class),
+        anyInt(),
+        anyDouble()
+    );  }
 
   @Test
   @DisplayName("도서 정보를 정상적으로 수정한다.")
@@ -270,17 +296,24 @@ class BasicBookServiceTest {
         request.publishedDate(),
         "9788960777330",
         null,
-        0,
-        0.0,
+        3,
+        4.0,
         LocalDateTime.now(),
         LocalDateTime.now()
     );
 
-    when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
-        .thenReturn(Optional.of(book));
+    BookSearchResult searchResult =
+        new BookSearchResult(book, 3L, 4.0);
 
-    when(bookMapper.toDto(book, null))
-        .thenReturn(expected);
+    when(bookRepository.findByIdWithReviewStats(bookId))
+        .thenReturn(Optional.of(searchResult));
+
+    when(bookMapper.toDto(
+        book,
+        null,
+        3,
+        4.0
+    )).thenReturn(expected);
 
     BookDto result = basicBookService.update(
         bookId,
@@ -295,11 +328,16 @@ class BasicBookServiceTest {
     assertThat(book.getDescription()).isEqualTo("수정된 설명");
     assertThat(book.getPublisher()).isEqualTo("수정된 출판사");
     assertThat(book.getPublishedDate()).isEqualTo(LocalDate.of(2025, 1, 1));
-
     assertThat(book.getIsbn()).isEqualTo("9788960777330");
 
-    verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
-    verify(bookMapper).toDto(book, null);
+    verify(bookRepository).findByIdWithReviewStats(bookId);
+
+    verify(bookMapper).toDto(
+        book,
+        null,
+        3,
+        4.0
+    );
   }
 
   @Test
@@ -421,11 +459,19 @@ class BasicBookServiceTest {
     when(bookRepository.findAllByCursor(request))
         .thenReturn(results);
 
-    when(bookMapper.toDto(book1, null))
-        .thenReturn(dto1);
+    when(bookMapper.toDto(
+        book1,
+        null,
+        0,
+        0.0
+    )).thenReturn(dto1);
 
-    when(bookMapper.toDto(book2, null))
-        .thenReturn(dto2);
+    when(bookMapper.toDto(
+        book2,
+        null,
+        0,
+        0.0
+    )).thenReturn(dto2);
 
     when(bookRepository.countAll(request))
         .thenReturn(3L);
