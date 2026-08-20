@@ -4,13 +4,19 @@ import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
+import com.deokhugam.book.dto.response.BookInfoResponse;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.book.entity.Book;
+import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.kakao.KakaoBookClient;
+import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.global.storage.Storage;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +32,8 @@ public class BasicBookService implements BookService {
 
   private final BookRepository bookRepository;
   private final BookMapper bookMapper;
+  private final Storage storage;
+  private final KakaoBookClient kakaoBookClient;
 
   @Override
   @Transactional
@@ -37,9 +45,14 @@ public class BasicBookService implements BookService {
 
     Book book = bookMapper.toEntity(request);
 
+    if (thumbnailImage != null && !thumbnailImage.isEmpty()) {
+      String thumbnailPath = storage.upload(thumbnailImage);
+      book.updateThumbnailUrl(thumbnailPath);
+    }
+
     Book savedBook = bookRepository.save(book);
 
-    return bookMapper.toDto(savedBook);
+    return toDto(savedBook);
   }
 
   @Override
@@ -48,7 +61,7 @@ public class BasicBookService implements BookService {
     Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
         .orElseThrow(() -> new BookNotFoundException(bookId));
 
-    return bookMapper.toDto(book);
+    return toDto(book);
   }
 
   @Override
@@ -61,7 +74,7 @@ public class BasicBookService implements BookService {
     List<BookSearchResult> pageResults = hasNext ? results.subList(0, request.limit()) : results;
 
     List<BookDto> content = pageResults.stream()
-        .map(result -> bookMapper.toDto(result.book()))
+        .map(result -> toDto(result.book()))
         .toList();
 
     String nextCursor = null;
@@ -103,10 +116,21 @@ public class BasicBookService implements BookService {
         request.author(),
         request.description(),
         request.publisher(),
-        request.publisherDate()
+        request.publishedDate()
     );
 
-    return bookMapper.toDto(book);
+    if (thumbnailImage != null && !thumbnailImage.isEmpty()) {
+      String oldThumbnailPath = book.getThumbnailUrl();
+      String newThumbnailPath = storage.upload(thumbnailImage);
+
+      book.updateThumbnailUrl(newThumbnailPath);
+
+      if (oldThumbnailPath != null && !oldThumbnailPath.isBlank()) {
+        storage.delete(oldThumbnailPath);
+      }
+    }
+
+    return toDto(book);
   }
 
   @Override
@@ -117,5 +141,40 @@ public class BasicBookService implements BookService {
         .orElseThrow(() -> new BookNotFoundException(bookId));
 
     book.softDelete();
+  }
+
+  private BookDto toDto(Book book) {
+    String thumbnailUrl = book.getThumbnailUrl();
+
+    if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
+      thumbnailUrl = storage.getUrl(thumbnailUrl);
+    }
+
+    return bookMapper.toDto(book, thumbnailUrl);
+  }
+
+  @Override
+  public BookInfoResponse findBookInfoByIsbn(String isbn) {
+    KakaoBookSearchResponse response = kakaoBookClient.searchByIsbn(isbn);
+
+    if (response == null || response.documents() == null || response.documents().isEmpty()) {
+      throw new BookInfoNotFoundException(isbn);
+    }
+
+    KakaoBookSearchResponse.Document document = response.documents().get(0);
+
+    String author = String.join(", ", document.authors());
+
+    LocalDate publishedDate = document.datetime() != null ? document.datetime().toLocalDate() : null;
+
+    return new BookInfoResponse(
+        document.title(),
+        author,
+        document.contents(),
+        document.publisher(),
+        publishedDate,
+        isbn,
+        document.thumbnail()
+    );
   }
 }
