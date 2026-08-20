@@ -9,8 +9,10 @@ import com.deokhugam.review.entity.Review;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -115,6 +117,48 @@ class ReviewRepositoryTest {
                 );
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("여러 리뷰 조회 시 논리 삭제된 리뷰를 제외한다")
+    void findActiveReviews() {
+        User user = userRepository.save(createUser());
+
+        Book activeBook = bookRepository.save(createBook());
+        Book deletedReviewBook = bookRepository.save(createBook());
+
+        Review activeReview = Review.create(
+            user,
+            activeBook,
+            "활성 리뷰",
+            5
+        );
+
+        Review deletedReview = Review.create(
+            user,
+            deletedReviewBook,
+            "삭제된 리뷰",
+            4
+        );
+
+        reviewRepository.save(activeReview);
+
+        deletedReview.softDelete();
+        reviewRepository.save(deletedReview);
+
+        reviewRepository.flush();
+
+        List<Review> result =
+            reviewRepository.findAllByIdInAndDeletedAtIsNull(
+                List.of(
+                    activeReview.getId(),
+                    deletedReview.getId()
+                )
+            );
+
+        assertThat(result)
+            .extracting(Review::getId)
+            .containsExactly(activeReview.getId());
     }
 
     private User createUser() {

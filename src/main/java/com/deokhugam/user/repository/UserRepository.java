@@ -1,6 +1,7 @@
 package com.deokhugam.user.repository;
 
 import com.deokhugam.user.entity.User;
+import java.util.Collection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +19,6 @@ public interface UserRepository extends JpaRepository<User, UUID>, UserRepositor
 
     @Query("SELECT u FROM User u WHERE u.deletedAt IS NOT NULL AND u.deletedAt <= :time")
     List<User> findSoftDeletedBefore(@Param("time") LocalDateTime time);
+
+    List<User> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
 }
