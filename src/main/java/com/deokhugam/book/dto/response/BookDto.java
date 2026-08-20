@@ -20,4 +20,5 @@ public record BookDto(
     LocalDateTime updatedAt
 
 ) {
+
 }
