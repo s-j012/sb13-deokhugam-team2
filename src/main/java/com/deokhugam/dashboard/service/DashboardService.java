@@ -70,7 +70,7 @@ public class DashboardService {
     return new CursorPageResponse<>(content, nextCursor, nextAfter, content.size(), totalElements, paging.hasNext());
   }
 
-  // 인기 도서 조회
+  // 인기 도서 목록 조회
   public CursorPageResponse<PopularBookDto> getPopularBooks(PeriodType period, String direction, String cursor, String after, int limit) {
     LocalDate today = LocalDate.now();
     List<BookRanking> allRankings = bookRankingRepository.findAllByPeriodTypeAndBaseDateOrderByRankingAsc(period, today);
@@ -91,10 +91,9 @@ public class DashboardService {
           .period(ranking.getPeriodType())
           .rank(ranking.getRanking())
           .score(ranking.getScore())
+          .reviewCount(ranking.getReviewCount())
+          .rating(ranking.getRating())
 
-          // TODO
-          .reviewCount(0) // book.getReviewCount()
-          .rating(0.0)    // book.getRating()
           .createdAt(ranking.getCreatedAt())
           .build();
     }).collect(Collectors.toList());
@@ -102,7 +101,7 @@ public class DashboardService {
     return createCursorPageResponse(paging, content, allRankings.size(), limit, PopularBookDto::createdAt);
   }
 
-  // 인기 리뷰 조회
+  // 인기 리뷰 목록 조회
   public CursorPageResponse<PopularReviewDto> getPopularReviews(PeriodType period, String direction, String cursor, String after, int limit) {
     LocalDate today = LocalDate.now();
     List<ReviewRanking> allRankings = reviewRankingRepository.findAllByPeriodTypeAndBaseDateOrderByRankingAsc(period, today);
@@ -131,17 +130,16 @@ public class DashboardService {
           .userNickname(user != null ? user.getNickname() : "알 수 없음")
           .reviewContent(review != null ? review.getContent() : "삭제된 리뷰")
           .reviewRating(review != null ? review.getRating() : 0.0)
+          .likeCount(ranking.getLikeCount())
+          .commentCount(ranking.getCommentCount())
 
-          // TODO
-          .likeCount(0)    // review.getLikeCount()
-          .commentCount(0) // review.getCommentCount()
           .build();
     }).collect(Collectors.toList());
 
     return createCursorPageResponse(paging, content, allRankings.size(), limit, PopularReviewDto::createdAt);
   }
 
-  // 파워 유저 조회
+  // 파워 유저 목록 조회
   public CursorPageResponse<PowerUserDto> getPowerUsers(PeriodType period, String direction, String cursor, String after, int limit) {
     LocalDate today = LocalDate.now();
     List<UserRanking> allRankings = userRankingRepository.findAllByPeriodTypeAndBaseDateOrderByRankingAsc(period, today);
@@ -162,6 +160,7 @@ public class DashboardService {
           .reviewScoreSum(ranking.getReviewScoreSum())
           .likeCount(ranking.getLikeCount())
           .commentCount(ranking.getCommentCount())
+
           .createdAt(ranking.getCreatedAt())
           .build();
     }).collect(Collectors.toList());

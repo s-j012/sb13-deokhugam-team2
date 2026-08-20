@@ -41,12 +41,20 @@ public class BookRanking extends BaseEntity {
   @Column(name = "base_date", nullable = false)
   private LocalDate baseDate;
 
+  @Column(nullable = false)
+  private int reviewCount;
+
+  @Column(nullable = false)
+  private double rating;
+
   @Builder
-  public BookRanking(UUID bookId, PeriodType periodType, int ranking, double score, LocalDate baseDate) {
+  public BookRanking(UUID bookId, PeriodType periodType, int ranking, double score, LocalDate baseDate, int reviewCount, double rating) {
     this.bookId = bookId;
     this.periodType = periodType;
     this.ranking = ranking;
     this.score = score;
     this.baseDate = baseDate;
+    this.reviewCount = reviewCount;
+    this.rating = rating;
   }
 }

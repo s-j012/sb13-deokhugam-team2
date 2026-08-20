@@ -41,12 +41,20 @@ public class ReviewRanking extends BaseEntity {
   @Column(name = "base_date", nullable = false)
   private LocalDate baseDate;
 
+  @Column(nullable = false)
+  private int likeCount;
+
+  @Column(nullable = false)
+  private int commentCount;
+
   @Builder
-  public ReviewRanking(UUID reviewId, PeriodType periodType, int ranking, double score, LocalDate baseDate) {
+  public ReviewRanking(UUID reviewId, PeriodType periodType, int ranking, double score, LocalDate baseDate, int likeCount, int commentCount) {
     this.reviewId = reviewId;
     this.periodType = periodType;
     this.ranking = ranking;
     this.score = score;
     this.baseDate = baseDate;
+    this.likeCount = likeCount;
+    this.commentCount = commentCount;
   }
 }
