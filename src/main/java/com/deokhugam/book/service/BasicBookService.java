@@ -74,18 +74,25 @@ public class BasicBookService implements BookService {
     List<BookSearchResult> pageResults = hasNext ? results.subList(0, request.limit()) : results;
 
     List<BookDto> content = pageResults.stream()
-        .map(result -> toDto(result.book()))
+        .map(result -> toDto(
+            result.book(),
+            result.reviewCount(),
+            result.rating()
+        ))
         .toList();
 
     String nextCursor = null;
     LocalDateTime nextAfter = null;
 
     if (hasNext && !pageResults.isEmpty()) {
-      Book lastBook = pageResults.get(pageResults.size() - 1).book();
+      BookSearchResult lastResult = pageResults.get(pageResults.size() - 1);
+      Book lastBook = lastResult.book();
 
       nextCursor = switch (request.orderBy()) {
         case "publishedDate" -> lastBook.getPublishedDate().toString();
         case "title" -> lastBook.getTitle();
+        case "rating" -> String.valueOf(lastResult.rating());
+        case "reviewCount" -> String.valueOf(lastResult.reviewCount());
         default -> lastBook.getTitle();
       };
 
@@ -144,13 +151,22 @@ public class BasicBookService implements BookService {
   }
 
   private BookDto toDto(Book book) {
+    return toDto(book, 0L, 0.0);
+  }
+
+  private BookDto toDto(Book book, long reviewCount, double rating) {
     String thumbnailUrl = book.getThumbnailUrl();
 
     if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
       thumbnailUrl = storage.getUrl(thumbnailUrl);
     }
 
-    return bookMapper.toDto(book, thumbnailUrl);
+    return bookMapper.toDto(
+        book,
+        thumbnailUrl,
+        Math.toIntExact(reviewCount),
+        rating
+    );
   }
 
   @Override
