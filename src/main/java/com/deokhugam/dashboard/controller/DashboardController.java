@@ -3,7 +3,6 @@ package com.deokhugam.dashboard.controller;
 import com.deokhugam.book.dto.response.CursorPageResponse;
 import com.deokhugam.dashboard.dto.response.PopularBookDto;
 import com.deokhugam.dashboard.dto.response.PopularReviewDto;
-import com.deokhugam.dashboard.dto.response.PowerUserDto;
 import com.deokhugam.dashboard.entity.PeriodType;
 import com.deokhugam.dashboard.service.DashboardQueryService;
 import jakarta.validation.constraints.Positive;
@@ -54,17 +53,17 @@ public class DashboardController {
     );
   }
 
-  @GetMapping("/users/power")
-  public ResponseEntity<CursorPageResponse<PowerUserDto>> getPowerUsers(
-      @RequestParam(name = "period", defaultValue = "DAILY") PeriodType period,
-      @RequestParam(name = "direction", defaultValue = "ASC") Sort.Direction direction,
-      @RequestParam(name = "cursor", required = false) String cursor,
-      @RequestParam(name = "after", required = false)
-      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
-      @RequestParam(name = "limit", defaultValue = "50") @Positive int limit
-  ) {
-    return ResponseEntity.ok(
-        dashboardQueryService.getPowerUsers(period, direction, cursor, after, limit)
-    );
-  }
+//  @GetMapping("/users/power")
+//  public ResponseEntity<CursorPageResponse<PowerUserDto>> getPowerUsers(
+//      @RequestParam(name = "period", defaultValue = "DAILY") PeriodType period,
+//      @RequestParam(name = "direction", defaultValue = "ASC") Sort.Direction direction,
+//      @RequestParam(name = "cursor", required = false) String cursor,
+//      @RequestParam(name = "after", required = false)
+//      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
+//      @RequestParam(name = "limit", defaultValue = "50") @Positive int limit
+//  ) {
+//    return ResponseEntity.ok(
+//        dashboardQueryService.getPowerUsers(period, direction, cursor, after, limit)
+//    );
+//  }
 }
