@@ -11,6 +11,7 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
@@ -34,6 +35,7 @@ public class BasicBookService implements BookService {
   private final BookMapper bookMapper;
   private final Storage storage;
   private final KakaoBookClient kakaoBookClient;
+  private final GoogleBookClient googleBookClient;
 
   @Override
   @Transactional
@@ -58,10 +60,10 @@ public class BasicBookService implements BookService {
   @Override
   public BookDto findById(UUID bookId) {
 
-    Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
+    BookSearchResult result = bookRepository.findByIdWithReviewStats(bookId)
         .orElseThrow(() -> new BookNotFoundException(bookId));
 
-    return toDto(book);
+    return toDto(result.book(), result.reviewCount(), result.rating());
   }
 
   @Override
@@ -74,18 +76,25 @@ public class BasicBookService implements BookService {
     List<BookSearchResult> pageResults = hasNext ? results.subList(0, request.limit()) : results;
 
     List<BookDto> content = pageResults.stream()
-        .map(result -> toDto(result.book()))
+        .map(result -> toDto(
+            result.book(),
+            result.reviewCount(),
+            result.rating()
+        ))
         .toList();
 
     String nextCursor = null;
     LocalDateTime nextAfter = null;
 
     if (hasNext && !pageResults.isEmpty()) {
-      Book lastBook = pageResults.get(pageResults.size() - 1).book();
+      BookSearchResult lastResult = pageResults.get(pageResults.size() - 1);
+      Book lastBook = lastResult.book();
 
       nextCursor = switch (request.orderBy()) {
         case "publishedDate" -> lastBook.getPublishedDate().toString();
         case "title" -> lastBook.getTitle();
+        case "rating" -> String.valueOf(lastResult.rating());
+        case "reviewCount" -> String.valueOf(lastResult.reviewCount());
         default -> lastBook.getTitle();
       };
 
@@ -108,8 +117,10 @@ public class BasicBookService implements BookService {
   @Transactional
   public BookDto update(UUID bookId, BookUpdateRequest request, MultipartFile thumbnailImage) {
 
-    Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
+    BookSearchResult result = bookRepository.findByIdWithReviewStats(bookId)
         .orElseThrow(() -> new BookNotFoundException(bookId));
+
+    Book book = result.book();
 
     book.update(
         request.title(),
@@ -130,7 +141,7 @@ public class BasicBookService implements BookService {
       }
     }
 
-    return toDto(book);
+    return toDto(book, result.reviewCount(), result.rating());
   }
 
   @Override
@@ -144,13 +155,22 @@ public class BasicBookService implements BookService {
   }
 
   private BookDto toDto(Book book) {
+    return toDto(book, 0L, 0.0);
+  }
+
+  private BookDto toDto(Book book, long reviewCount, double rating) {
     String thumbnailUrl = book.getThumbnailUrl();
 
     if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
       thumbnailUrl = storage.getUrl(thumbnailUrl);
     }
 
-    return bookMapper.toDto(book, thumbnailUrl);
+    return bookMapper.toDto(
+        book,
+        thumbnailUrl,
+        Math.toIntExact(reviewCount),
+        rating
+    );
   }
 
   @Override
@@ -165,7 +185,11 @@ public class BasicBookService implements BookService {
 
     String author = String.join(", ", document.authors());
 
-    LocalDate publishedDate = document.datetime() != null ? document.datetime().toLocalDate() : null;
+    LocalDate publishedDate =
+        document.datetime() != null ? document.datetime().toLocalDate() : null;
+
+    String thumbnailImage =
+        googleBookClient.findThumbnailBase64ByIsbn(isbn);
 
     return new BookInfoResponse(
         document.title(),
@@ -174,7 +198,7 @@ public class BasicBookService implements BookService {
         document.publisher(),
         publishedDate,
         isbn,
-        document.thumbnail()
+        thumbnailImage
     );
   }
 }
