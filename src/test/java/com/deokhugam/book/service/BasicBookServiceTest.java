@@ -24,6 +24,7 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
@@ -63,6 +64,9 @@ class BasicBookServiceTest {
 
   @Mock
   KakaoBookClient kakaoBookClient;
+
+  @Mock
+  GoogleBookClient googleBookClient;
 
   @BeforeEach
   void setUp() {

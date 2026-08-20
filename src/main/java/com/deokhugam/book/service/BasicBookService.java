@@ -11,6 +11,7 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
 import com.deokhugam.book.mapper.BookMapper;
@@ -34,6 +35,7 @@ public class BasicBookService implements BookService {
   private final BookMapper bookMapper;
   private final Storage storage;
   private final KakaoBookClient kakaoBookClient;
+  private final GoogleBookClient googleBookClient;
 
   @Override
   @Transactional
@@ -185,6 +187,9 @@ public class BasicBookService implements BookService {
 
     LocalDate publishedDate = document.datetime() != null ? document.datetime().toLocalDate() : null;
 
+    String thumbnailImage =
+        googleBookClient.findThumbnailBase64ByIsbn(isbn);
+
     return new BookInfoResponse(
         document.title(),
         author,
@@ -192,7 +197,7 @@ public class BasicBookService implements BookService {
         document.publisher(),
         publishedDate,
         isbn,
-        document.thumbnail()
+        thumbnailImage
     );
   }
 }

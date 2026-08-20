@@ -28,6 +28,9 @@ deokhugam:
   kakao:
     rest-api-key: ${KAKAO_REST_API_KEY:}
 
+  google:
+    books-api-key: ${GOOGLE_BOOKS_API_KEY:}
+
 server:
   port: ${PORT:8080}
 
