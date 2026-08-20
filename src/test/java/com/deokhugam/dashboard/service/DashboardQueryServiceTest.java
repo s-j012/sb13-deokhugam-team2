@@ -1,17 +1,21 @@
 package com.deokhugam.dashboard.service;
 
+import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.dashboard.entity.BookRanking;
 import com.deokhugam.dashboard.entity.PeriodType;
 import com.deokhugam.dashboard.exception.InvalidDashboardPaginationException;
 import com.deokhugam.dashboard.repository.BookRankingRepository;
 import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.dashboard.repository.UserRankingRepository;
+import com.deokhugam.global.storage.Storage;
 import com.deokhugam.review.repository.ReviewRepository;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,9 +55,11 @@ class DashboardQueryServiceTest {
   @Mock
   private UserRepository userRepository;
 
+  @Mock
+  private Storage storage;
+
   @InjectMocks
   private DashboardQueryService dashboardQueryService;
-
 
   @Test
   @DisplayName("cursor와 after는 함께 전달해야 한다")
@@ -78,7 +85,6 @@ class DashboardQueryServiceTest {
     ).isInstanceOf(InvalidDashboardPaginationException.class);
   }
 
-
   @Test
   @DisplayName("cursor는 숫자 형식이어야 한다")
   void validateCursorFormat() {
@@ -92,7 +98,6 @@ class DashboardQueryServiceTest {
         )
     ).isInstanceOf(InvalidDashboardPaginationException.class);
   }
-
 
   @Test
   @DisplayName("랭킹 데이터가 없으면 페이지 조회를 수행하지 않는다")
@@ -124,7 +129,6 @@ class DashboardQueryServiceTest {
         any()
     );
   }
-
 
   @Test
   @DisplayName("인기 도서를 오름차순으로 조회한다")
@@ -162,8 +166,10 @@ class DashboardQueryServiceTest {
         isNull(),
         any(Pageable.class)
     );
-  }
 
+    verify(bookRepository)
+        .findAllByIdInAndDeletedAtIsNull(List.of());
+  }
 
   @Test
   @DisplayName("인기 리뷰를 내림차순으로 조회한다")
@@ -201,8 +207,16 @@ class DashboardQueryServiceTest {
         isNull(),
         any(Pageable.class)
     );
-  }
 
+    verify(reviewRepository)
+        .findAllByIdInAndDeletedAtIsNull(List.of());
+
+    verify(bookRepository)
+        .findAllByIdInAndDeletedAtIsNull(List.of());
+
+    verify(userRepository)
+        .findAllByIdInAndDeletedAtIsNull(List.of());
+  }
 
   @Test
   @DisplayName("파워 유저를 오름차순으로 조회한다")
@@ -240,5 +254,55 @@ class DashboardQueryServiceTest {
         isNull(),
         any(Pageable.class)
     );
+
+    verify(userRepository)
+        .findAllByIdInAndDeletedAtIsNull(List.of());
+  }
+
+  @Test
+  @DisplayName("인기 도서의 썸네일 저장 경로를 접근 URL로 변환한다")
+  void convertThumbnailUrl() {
+    LocalDate baseDate = LocalDate.of(2026, 8, 20);
+    UUID bookId = UUID.randomUUID();
+
+    BookRanking ranking = mock(BookRanking.class);
+    Book book = mock(Book.class);
+
+    when(ranking.getBookId()).thenReturn(bookId);
+    when(book.getId()).thenReturn(bookId);
+    when(book.getThumbnailUrl()).thenReturn("books/test.jpg");
+
+    when(bookRankingRepository.findLatestBaseDate(PeriodType.DAILY))
+        .thenReturn(Optional.of(baseDate));
+
+    when(bookRankingRepository.countByPeriodTypeAndBaseDate(
+        PeriodType.DAILY,
+        baseDate
+    )).thenReturn(1L);
+
+    when(bookRankingRepository.findRankingPageAsc(
+        eq(PeriodType.DAILY),
+        eq(baseDate),
+        isNull(),
+        isNull(),
+        any(Pageable.class)
+    )).thenReturn(List.of(ranking));
+
+    when(bookRepository.findAllByIdInAndDeletedAtIsNull(
+        List.of(bookId)
+    )).thenReturn(List.of(book));
+
+    when(storage.getUrl("books/test.jpg"))
+        .thenReturn("https://example.com/books/test.jpg");
+
+    dashboardQueryService.getPopularBooks(
+        PeriodType.DAILY,
+        Sort.Direction.ASC,
+        null,
+        null,
+        50
+    );
+
+    verify(storage).getUrl("books/test.jpg");
   }
 }

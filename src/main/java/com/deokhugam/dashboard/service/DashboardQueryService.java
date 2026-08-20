@@ -14,6 +14,7 @@ import com.deokhugam.dashboard.exception.InvalidDashboardPaginationException;
 import com.deokhugam.dashboard.repository.BookRankingRepository;
 import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.dashboard.repository.UserRankingRepository;
+import com.deokhugam.global.storage.Storage;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.review.repository.ReviewRepository;
 import com.deokhugam.user.entity.User;
@@ -46,6 +47,7 @@ public class DashboardQueryService {
   private final BookRepository bookRepository;
   private final ReviewRepository reviewRepository;
   private final UserRepository userRepository;
+  private final Storage storage;
 
   private RankingCursor parseRankingCursor(String cursor, LocalDateTime after) {
     boolean hasCursor = cursor != null && !cursor.isBlank();
@@ -88,6 +90,13 @@ public class DashboardQueryService {
     if (limit == Integer.MAX_VALUE) {
       throw new InvalidDashboardPaginationException("limit가 너무 큽니다.");
     }
+  }
+
+  private String getThumbnailUrl(Book book) {
+    if (book == null || book.getThumbnailUrl() == null || book.getThumbnailUrl().isBlank()) {
+      return null;
+    }
+    return storage.getUrl(book.getThumbnailUrl());
   }
 
   private <T> CursorPageResponse<T> createCursorPageResponse(
@@ -186,7 +195,9 @@ public class DashboardQueryService {
         .distinct()
         .collect(Collectors.toList());
 
-    Map<UUID, Book> bookMap = bookRepository.findAllById(bookIds).stream()
+    Map<UUID, Book> bookMap = bookRepository
+        .findAllByIdInAndDeletedAtIsNull(bookIds)
+        .stream()
         .collect(Collectors.toMap(Book::getId, Function.identity()));
 
     List<PopularBookDto> content = pageData.items().stream()
@@ -198,7 +209,7 @@ public class DashboardQueryService {
               .bookId(ranking.getBookId())
               .title(book != null ? book.getTitle() : "삭제된 도서")
               .author(book != null ? book.getAuthor() : "알 수 없음")
-              .thumbnailUrl(book != null ? book.getThumbnailUrl() : null)
+              .thumbnailUrl(getThumbnailUrl(book))
               .period(ranking.getPeriodType())
               .rank(ranking.getRanking())
               .score(ranking.getScore())
@@ -243,23 +254,51 @@ public class DashboardQueryService {
         .distinct()
         .collect(Collectors.toList());
 
-    Map<UUID, Review> reviewMap = reviewRepository.findAllById(reviewIds).stream()
+    Map<UUID, Review> reviewMap = reviewRepository
+        .findAllByIdInAndDeletedAtIsNull(reviewIds)
+        .stream()
         .collect(Collectors.toMap(Review::getId, Function.identity()));
+
+    List<UUID> bookIds = reviewMap.values().stream()
+        .map(review -> review.getBook().getId())
+        .distinct()
+        .collect(Collectors.toList());
+
+    Map<UUID, Book> bookMap = bookRepository
+        .findAllByIdInAndDeletedAtIsNull(bookIds)
+        .stream()
+        .collect(Collectors.toMap(Book::getId, Function.identity()));
+
+    List<UUID> userIds = reviewMap.values().stream()
+        .map(review -> review.getUser().getId())
+        .distinct()
+        .collect(Collectors.toList());
+
+    Map<UUID, User> userMap = userRepository
+        .findAllByIdInAndDeletedAtIsNull(userIds)
+        .stream()
+        .collect(Collectors.toMap(User::getId, Function.identity()));
 
     List<PopularReviewDto> content = pageData.items().stream()
         .map(ranking -> {
           Review review = reviewMap.get(ranking.getReviewId());
-          Book book = review != null ? review.getBook() : null;
-          User user = review != null ? review.getUser() : null;
+
+          Book book = review != null
+              ? bookMap.get(review.getBook().getId())
+              : null;
+
+          User user = review != null
+              ? userMap.get(review.getUser().getId())
+              : null;
 
           return PopularReviewDto.builder()
               .id(ranking.getId())
               .reviewId(ranking.getReviewId())
               .bookId(book != null ? book.getId() : null)
               .bookTitle(book != null ? book.getTitle() : "삭제된 도서")
-              .bookThumbnailUrl(book != null ? book.getThumbnailUrl() : null)
+              .bookThumbnailUrl(getThumbnailUrl(book))
               .userId(user != null ? user.getId() : null)
-              .userNickname(user != null ? user.getNickname() : "알 수 없음")
+              .userNickname(user != null ? user.getNickname() : "탈퇴한 사용자")
               .reviewContent(review != null ? review.getContent() : "삭제된 리뷰")
               .reviewRating(review != null ? review.getRating() : 0.0)
               .period(ranking.getPeriodType())
@@ -306,7 +345,9 @@ public class DashboardQueryService {
         .distinct()
         .collect(Collectors.toList());
 
-    Map<UUID, User> userMap = userRepository.findAllById(userIds).stream()
+    Map<UUID, User> userMap = userRepository
+        .findAllByIdInAndDeletedAtIsNull(userIds)
+        .stream()
         .collect(Collectors.toMap(User::getId, Function.identity()));
 
     List<PowerUserDto> content = pageData.items().stream()
