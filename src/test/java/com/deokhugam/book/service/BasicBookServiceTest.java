@@ -220,21 +220,24 @@ class BasicBookServiceTest {
         LocalDateTime.now()
     );
 
-    when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
-        .thenReturn(Optional.of(book));
+    BookSearchResult searchResult =
+        new BookSearchResult(book, 2L, 4.5);
+
+    when(bookRepository.findByIdWithReviewStats(bookId))
+        .thenReturn(Optional.of(searchResult));
 
     when(bookMapper.toDto(
         book,
         null,
-        0,
-        0.0
+        2,
+        4.5
     )).thenReturn(expected);
 
     BookDto result = basicBookService.findById(bookId);
 
     assertThat(result).isEqualTo(expected);
 
-    verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
+    verify(bookRepository).findByIdWithReviewStats(bookId);
   }
 
   @Test
@@ -243,13 +246,13 @@ class BasicBookServiceTest {
 
     UUID bookId = UUID.randomUUID();
 
-    when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
+    when(bookRepository.findByIdWithReviewStats(bookId))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> basicBookService.findById(bookId))
         .isInstanceOf(BookNotFoundException.class);
 
-    verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
+    verify(bookRepository).findByIdWithReviewStats(bookId);
     verify(bookMapper, never()).toDto(
         any(Book.class),
         nullable(String.class),
@@ -289,20 +292,23 @@ class BasicBookServiceTest {
         request.publishedDate(),
         "9788960777330",
         null,
-        0,
-        0.0,
+        3,
+        4.0,
         LocalDateTime.now(),
         LocalDateTime.now()
     );
 
-    when(bookRepository.findByIdAndDeletedAtIsNull(bookId))
-        .thenReturn(Optional.of(book));
+    BookSearchResult searchResult =
+        new BookSearchResult(book, 3L, 4.0);
+
+    when(bookRepository.findByIdWithReviewStats(bookId))
+        .thenReturn(Optional.of(searchResult));
 
     when(bookMapper.toDto(
         book,
         null,
-        0,
-        0.0
+        3,
+        4.0
     )).thenReturn(expected);
 
     BookDto result = basicBookService.update(
@@ -320,13 +326,13 @@ class BasicBookServiceTest {
     assertThat(book.getPublishedDate()).isEqualTo(LocalDate.of(2025, 1, 1));
     assertThat(book.getIsbn()).isEqualTo("9788960777330");
 
-    verify(bookRepository).findByIdAndDeletedAtIsNull(bookId);
+    verify(bookRepository).findByIdWithReviewStats(bookId);
 
     verify(bookMapper).toDto(
         book,
         null,
-        0,
-        0.0
+        3,
+        4.0
     );
   }
 

@@ -58,10 +58,10 @@ public class BasicBookService implements BookService {
   @Override
   public BookDto findById(UUID bookId) {
 
-    Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
+    BookSearchResult result = bookRepository.findByIdWithReviewStats(bookId)
         .orElseThrow(() -> new BookNotFoundException(bookId));
 
-    return toDto(book);
+    return toDto(result.book(), result.reviewCount(), result.rating());
   }
 
   @Override
@@ -115,8 +115,10 @@ public class BasicBookService implements BookService {
   @Transactional
   public BookDto update(UUID bookId, BookUpdateRequest request, MultipartFile thumbnailImage) {
 
-    Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
-        .orElseThrow(() -> new BookNotFoundException(bookId));
+    BookSearchResult result = bookRepository.findByIdWithReviewStats(bookId)
+            .orElseThrow(() -> new BookNotFoundException(bookId));
+
+    Book book = result.book();
 
     book.update(
         request.title(),
@@ -137,7 +139,7 @@ public class BasicBookService implements BookService {
       }
     }
 
-    return toDto(book);
+    return toDto(book, result.reviewCount(), result.rating());
   }
 
   @Override

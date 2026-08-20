@@ -8,6 +8,8 @@ import com.deokhugam.book.enums.SortDirection;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -167,5 +169,37 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     }
 
     return query.getSingleResult();
+  }
+
+  @Override
+  public Optional<BookSearchResult> findByIdWithReviewStats(UUID bookId) {
+
+    String jpql = """      
+        SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
+      FROM Book b
+      LEFT JOIN Review r
+          ON r.book = b
+          AND r.deletedAt IS NULL
+      WHERE b.id = :bookId
+        AND b.deletedAt IS NULL
+      GROUP BY b
+      """;
+
+    List<Object[]> results = entityManager
+        .createQuery(jpql, Object[].class)
+        .setParameter("bookId", bookId)
+        .getResultList();
+
+    if (results.isEmpty()) {
+      return Optional.empty();
+    }
+
+    Object[] result = results.get(0);
+
+    return Optional.of(new BookSearchResult(
+        (Book) result[0],
+        ((Number) result[1]).longValue(),
+        ((Number) result[2]).doubleValue()
+    ));
   }
 }
