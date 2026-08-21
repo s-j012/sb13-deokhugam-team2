@@ -23,5 +23,6 @@ public interface BookService {
 
   BookInfoResponse findBookInfoByIsbn(String isbn);
 
+  String extractIsbnFromImage(MultipartFile image);
 
 }

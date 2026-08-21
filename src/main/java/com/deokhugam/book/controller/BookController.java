@@ -43,6 +43,18 @@ public class BookController {
     return ResponseEntity.status(HttpStatus.CREATED).body(bookDto);
   }
 
+  @PostMapping(
+      value = "/isbn/ocr",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+  )
+  public ResponseEntity<String> extractIsbn(
+      @RequestPart("image") MultipartFile image
+  ) {
+    String isbn = bookService.extractIsbnFromImage(image);
+
+    return ResponseEntity.ok(isbn);
+  }
+
   @GetMapping("/{bookId}")
   public ResponseEntity<BookDto> findById(
       @PathVariable UUID bookId) {

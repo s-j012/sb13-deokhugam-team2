@@ -11,9 +11,12 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.exception.IsbnOcrFailedException;
 import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
+import com.deokhugam.book.external.ocr.OcrSpaceClient;
+import com.deokhugam.book.external.ocr.OcrSpaceResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.global.storage.Storage;
@@ -21,6 +24,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +41,10 @@ public class BasicBookService implements BookService {
   private final Storage storage;
   private final KakaoBookClient kakaoBookClient;
   private final GoogleBookClient googleBookClient;
+  private final OcrSpaceClient ocrSpaceClient;
+
+  private static final Pattern Isbn_13_PATTERN =
+      Pattern.compile("(?:978|979)(?:[-\\s]?\\d){10}");
 
   @Override
   @Transactional
@@ -200,5 +209,35 @@ public class BasicBookService implements BookService {
         isbn,
         thumbnailImage
     );
+  }
+
+  @Override
+  public String extractIsbnFromImage(MultipartFile image) {
+    if (image == null || image.isEmpty()) {
+      throw new IsbnOcrFailedException();
+    }
+
+    OcrSpaceResponse response = ocrSpaceClient.parseImage(image);
+
+    if (response == null
+    || response.erroredOnProcessing()
+    || response.parsedResults() == null
+    || response.parsedResults().isEmpty()) {
+      throw new IsbnOcrFailedException();
+    }
+
+    String parsedText = response.parsedResults().stream()
+        .map(OcrSpaceResponse.ParsedResult::parsedText)
+        .filter(text -> text != null && !text.isBlank())
+        .reduce("", (a, b) -> a + " " + b);
+
+    Matcher matcher = Isbn_13_PATTERN.matcher(parsedText);
+
+    if (!matcher.find()) {
+      throw new IsbnOcrFailedException();
+    }
+
+    return matcher.group()
+        .replaceAll("[^0-9]", "");
   }
 }
