@@ -10,6 +10,7 @@ import com.deokhugam.review.entity.ReviewLike;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,6 +91,42 @@ class ReviewLikeRepositoryTest {
                 );
 
         assertThat(likedByMe).isFalse();
+    }
+
+    @Test
+    void 리뷰와_사용자_ID로_좋아요를_조회한다() {
+        User author = userRepository.save(
+                createUser("author@example.com", "작성자")
+        );
+        User requester = userRepository.save(
+                createUser("requester@example.com", "요청자")
+        );
+        Book book = bookRepository.save(createBook());
+
+        Review review = reviewRepository.save(
+                Review.create(
+                        author,
+                        book,
+                        "좋은 책입니다.",
+                        5
+                )
+        );
+
+        ReviewLike savedReviewLike =
+                reviewLikeRepository.saveAndFlush(
+                        ReviewLike.create(
+                                review,
+                                requester
+                        )
+                );
+
+        Optional<ReviewLike> result =
+                reviewLikeRepository.findByReviewIdAndUserId(
+                        review.getId(),
+                        requester.getId()
+                );
+
+        assertThat(result).contains(savedReviewLike);
     }
 
     private User createUser(
