@@ -11,9 +11,12 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.exception.IsbnOcrFailedException;
 import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
+import com.deokhugam.book.external.ocr.OcrSpaceClient;
+import com.deokhugam.book.external.ocr.OcrSpaceResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.global.storage.Storage;
@@ -21,6 +24,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +42,10 @@ public class BasicBookService implements BookService {
   private final Storage storage;
   private final KakaoBookClient kakaoBookClient;
   private final GoogleBookClient googleBookClient;
+  private final OcrSpaceClient ocrSpaceClient;
+
+  private static final Pattern ISBN_13_PATTERN =
+      Pattern.compile("(?:978|979)(?:[-\\s]?\\d){10}");
 
   @Override
   @Transactional
@@ -90,13 +100,7 @@ public class BasicBookService implements BookService {
       BookSearchResult lastResult = pageResults.get(pageResults.size() - 1);
       Book lastBook = lastResult.book();
 
-      nextCursor = switch (request.orderBy()) {
-        case "publishedDate" -> lastBook.getPublishedDate().toString();
-        case "title" -> lastBook.getTitle();
-        case "rating" -> String.valueOf(lastResult.rating());
-        case "reviewCount" -> String.valueOf(lastResult.reviewCount());
-        default -> lastBook.getTitle();
-      };
+      nextCursor = createNextCursor(request, lastResult);
 
       nextAfter = lastBook.getCreatedAt();
     }
@@ -201,4 +205,56 @@ public class BasicBookService implements BookService {
         thumbnailImage
     );
   }
+
+  @Override
+  public String extractIsbnFromImage(MultipartFile image) {
+    if (image == null || image.isEmpty()) {
+      throw new IsbnOcrFailedException();
+    }
+
+    OcrSpaceResponse response = ocrSpaceClient.parseImage(image);
+    validateOcrResponse(response);
+
+    String parsedText = extractParsedText(response);
+    Matcher matcher = ISBN_13_PATTERN.matcher(parsedText);
+
+    if (!matcher.find()) {
+      throw new IsbnOcrFailedException();
+    }
+
+    return matcher.group()
+        .replaceAll("[^0-9]", "");
+  }
+
+  private void validateOcrResponse(OcrSpaceResponse response) {
+    if (response == null
+        || response.erroredOnProcessing()
+        || response.parsedResults() == null
+        || response.parsedResults().isEmpty()) {
+      throw new IsbnOcrFailedException();
+    }
+  }
+
+  private String extractParsedText(OcrSpaceResponse response) {
+    return response.parsedResults().stream()
+        .map(OcrSpaceResponse.ParsedResult::parsedText)
+        .filter(text -> text != null && !text.isBlank())
+        .collect(Collectors.joining(" "));
+  }
+
+  private String createNextCursor(
+      BookSearchRequest request,
+      BookSearchResult result
+  ) {
+    Book book = result.book();
+
+    return switch (request.orderBy()) {
+      case "publishedDate" -> book.getPublishedDate().toString();
+      case "title" -> book.getTitle();
+      case "rating" -> String.valueOf(result.rating());
+      case "reviewCount" -> String.valueOf(result.reviewCount());
+      default -> book.getTitle();
+    };
+  }
 }
+

@@ -8,6 +8,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,9 +26,12 @@ import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookInfoNotFoundException;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.exception.DuplicateBookException;
+import com.deokhugam.book.exception.IsbnOcrFailedException;
 import com.deokhugam.book.external.google.GoogleBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookClient;
 import com.deokhugam.book.external.kakao.KakaoBookSearchResponse;
+import com.deokhugam.book.external.ocr.OcrSpaceClient;
+import com.deokhugam.book.external.ocr.OcrSpaceResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.global.storage.Storage;
@@ -43,6 +48,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,6 +73,9 @@ class BasicBookServiceTest {
 
   @Mock
   GoogleBookClient googleBookClient;
+
+  @Mock
+  OcrSpaceClient ocrSpaceClient;
 
   @BeforeEach
   void setUp() {
@@ -262,7 +271,8 @@ class BasicBookServiceTest {
         nullable(String.class),
         anyInt(),
         anyDouble()
-    );  }
+    );
+  }
 
   @Test
   @DisplayName("도서 정보를 정상적으로 수정한다.")
@@ -534,5 +544,120 @@ class BasicBookServiceTest {
         BookInfoNotFoundException.class,
         () -> basicBookService.findBookInfoByIsbn(isbn)
     );
+  }
+
+  @Test
+  @DisplayName("이미지에서 ISBN을 정상적으로 추출한다.")
+  void extractIsbnFromImage_success() {
+    MockMultipartFile image = new MockMultipartFile(
+        "image",
+        "book.jpg",
+        "image/jpeg",
+        "test-image".getBytes()
+    );
+
+    OcrSpaceResponse response = new OcrSpaceResponse(
+        List.of(
+            new OcrSpaceResponse.ParsedResult(
+                "BOOK TITLE ISBN 978-89-374-6077-7"
+            )
+        ),
+        false,
+        null
+    );
+
+    given(ocrSpaceClient.parseImage(image))
+        .willReturn(response);
+
+    String isbn = basicBookService.extractIsbnFromImage(image);
+
+    assertThat(isbn).isEqualTo("9788937460777");
+  }
+
+  @Test
+  @DisplayName("OCR 결과에 ISBN이 없으면 예외가 발생한다.")
+  void extractIsbnFromImage_throwsExceptionWhenIsbnNotFound() {
+    MockMultipartFile image = new MockMultipartFile(
+        "image",
+        "book.jpg",
+        "image/jpeg",
+        "test-image".getBytes()
+    );
+
+    OcrSpaceResponse response = new OcrSpaceResponse(
+        List.of(
+            new OcrSpaceResponse.ParsedResult(
+                "BOOK TITLE AUTHOR PUBLISHER"
+            )
+        ),
+        false,
+        null
+    );
+
+    given(ocrSpaceClient.parseImage(image))
+        .willReturn(response);
+
+    assertThatThrownBy(() ->
+        basicBookService.extractIsbnFromImage(image)
+    ).isInstanceOf(IsbnOcrFailedException.class);
+  }
+
+  @Test
+  @DisplayName("OCR 처리에 실패하면 예외가 발생한다.")
+  void extractIsbnFromImage_throwsExceptionWhenOcrFails() {
+    MockMultipartFile image = new MockMultipartFile(
+        "image",
+        "book.jpg",
+        "image/jpeg",
+        "test-image".getBytes()
+    );
+
+    OcrSpaceResponse response = new OcrSpaceResponse(
+        List.of(),
+        true,
+        "OCR processing failed"
+    );
+
+    given(ocrSpaceClient.parseImage(image))
+        .willReturn(response);
+
+    assertThatThrownBy(() ->
+        basicBookService.extractIsbnFromImage(image)
+    ).isInstanceOf(IsbnOcrFailedException.class);
+  }
+
+  @Test
+  @DisplayName("빈 이미지가 전달되면 예외가 발생한다.")
+  void extractIsbnFromImage_throwsExceptionWhenImageIsEmpty() {
+    MockMultipartFile image = new MockMultipartFile(
+        "image",
+        "empty.jpg",
+        "image/jpeg",
+        new byte[0]
+    );
+
+    assertThatThrownBy(() ->
+        basicBookService.extractIsbnFromImage(image)
+    ).isInstanceOf(IsbnOcrFailedException.class);
+
+    then(ocrSpaceClient).shouldHaveNoInteractions();
+  }
+
+  @Test
+  @DisplayName("OCR 응답이 없으면 예외가 발생한다.")
+  void extractIsbnFromImage_throwsExceptionWhenOcrResponseIsNull() {
+    MockMultipartFile image = new MockMultipartFile(
+        "image",
+        "book.jpg",
+        "image/jpeg",
+        "image".getBytes()
+    );
+
+    given(ocrSpaceClient.parseImage(image))
+        .willReturn(null);
+
+    assertThatThrownBy(() ->
+        basicBookService.extractIsbnFromImage(image)
+    ).isInstanceOf(IsbnOcrFailedException.class);
   }
 }
