@@ -6,7 +6,7 @@ import com.deokhugam.book.dto.request.BookUpdateRequest;
 import com.deokhugam.book.dto.response.BookDto;
 import com.deokhugam.book.dto.response.BookInfoResponse;
 import com.deokhugam.book.dto.response.CursorPageResponse;
-import com.deokhugam.book.service.BasicBookService;
+import com.deokhugam.book.service.BookService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
@@ -31,7 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class BookController {
 
-  private final BasicBookService bookService;
+  private final BookService bookService;
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<BookDto> create(

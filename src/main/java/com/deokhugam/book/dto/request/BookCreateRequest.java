@@ -2,6 +2,7 @@ package com.deokhugam.book.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
@@ -25,6 +26,10 @@ public record BookCreateRequest(
     LocalDate publishedDate,
 
     @NotBlank(message = "ISBN은 필수입니다.")
+    @Pattern(
+        regexp = "^(?:\\d{9}[\\dXx]|\\d{13})$",
+        message = "ISBN은 10자리 또는 13자리 형식이어야 합니다."
+    )
     String isbn
 ) {
 
