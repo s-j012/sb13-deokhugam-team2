@@ -25,6 +25,15 @@ deokhugam:
       bucket: ${AWS_S3_BUCKET:}
       presigned-url-expiration: ${AWS_S3_PRESIGNED_URL_EXPIRATION:600}
 
+  kakao:
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+
+  google:
+    books-api-key: ${GOOGLE_BOOKS_API_KEY:}
+
+  ocr-space:
+    api-key: ${OCR_SPACE_API_KEY:}
+
 server:
   port: ${PORT:8080}
 

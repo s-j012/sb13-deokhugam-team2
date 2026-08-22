@@ -3,9 +3,13 @@ package com.deokhugam.book.repository;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.response.BookSearchResult;
 import com.deokhugam.book.entity.Book;
+import com.deokhugam.book.enums.BookSortField;
+import com.deokhugam.book.enums.SortDirection;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -19,7 +23,14 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
   public List<BookSearchResult> findAllByCursor(BookSearchRequest request) {
 
     StringBuilder jpql = new StringBuilder(
-        "SELECT b FROM Book b WHERE b.deletedAt IS NULL"
+        """
+            SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
+            FROM Book b
+            LEFT JOIN Review r
+                ON r.book = b
+                AND r.deletedAt IS NULL
+            WHERE b.deletedAt IS NULL
+            """
     );
 
     boolean hasKeyword = request.keyword() != null && !request.keyword().isBlank();
@@ -32,28 +43,56 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
           .append(")");
     }
 
-    String sortField = switch (request.orderBy()) {
-      case "publishedDate" -> "b.publishedDate";
-      case "title" -> "b.title";
-      default -> "b.title";
+    BookSortField sortField = BookSortField.from(request.orderBy());
+    SortDirection sortDirection = SortDirection.from(request.direction());
+
+    String sortFieldPath = switch (sortField) {
+      case PUBLISHED_DATE -> "b.publishedDate";
+      case TITLE -> "b.title";
+      case RATING -> "COALESCE(AVG(r.rating), 0.0)";
+      case REVIEW_COUNT -> "COUNT(r.id)";
     };
 
-    String direction = "desc".equalsIgnoreCase(request.direction()) ? "DESC" : "ASC";
+    boolean aggregateSort =
+        sortField == BookSortField.RATING
+            || sortField == BookSortField.REVIEW_COUNT;
+
+    String direction = sortDirection.name();
 
     boolean hasCursor = request.cursor() != null && !request.cursor().isBlank();
 
-    String operator = "DESC".equals(direction) ? "<" : ">";
+    String operator = sortDirection == SortDirection.DESC ? "<" : ">";
 
-    if (hasCursor) {
+    if (hasCursor && !aggregateSort) {
       jpql.append(" AND (")
-          .append(sortField)
+          .append(sortFieldPath)
           .append(" ")
           .append(operator)
           .append(" :cursor");
 
       if (request.after() != null) {
         jpql.append(" OR (")
-            .append(sortField)
+            .append(sortFieldPath)
+            .append(" = :cursor AND b.createdAt ")
+            .append(operator)
+            .append(" :after)");
+      }
+
+      jpql.append(")");
+    }
+
+    jpql.append(" GROUP BY b");
+
+    if (hasCursor && aggregateSort) {
+      jpql.append(" HAVING (")
+          .append(sortFieldPath)
+          .append(" ")
+          .append(operator)
+          .append(" :cursor");
+
+      if (request.after() != null) {
+        jpql.append(" OR (")
+            .append(sortFieldPath)
             .append(" = :cursor AND b.createdAt ")
             .append(operator)
             .append(" :after)");
@@ -63,23 +102,24 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     }
 
     jpql.append(" ORDER BY ")
-        .append(sortField)
+        .append(sortFieldPath)
         .append(" ")
         .append(direction)
         .append(", b.createdAt ")
         .append(direction);
 
-    var query = entityManager.createQuery(jpql.toString(), Book.class);
+    var query = entityManager.createQuery(jpql.toString(), Object[].class);
 
     if (hasKeyword) {
       query.setParameter("keyword", "%" + request.keyword() + "%");
     }
 
     if (hasCursor) {
-      Object cursorValue = switch (request.orderBy()) {
-        case "publishedDate" -> LocalDate.parse(request.cursor());
-        case "title" -> request.cursor();
-        default -> request.cursor();
+      Object cursorValue = switch (sortField) {
+        case PUBLISHED_DATE -> LocalDate.parse(request.cursor());
+        case TITLE -> request.cursor();
+        case RATING -> Double.parseDouble(request.cursor());
+        case REVIEW_COUNT -> Long.parseLong(request.cursor());
       };
 
       query.setParameter("cursor", cursorValue);
@@ -89,14 +129,16 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
       }
     }
 
-    if (request.limit() > 0) {
-      query.setMaxResults(request.limit() + 1);
-    }
+    query.setMaxResults(request.limit() + 1);
 
-    List<Book> books = query.getResultList();
+    List<Object[]> results = query.getResultList();
 
-    return books.stream()
-        .map(book -> new BookSearchResult(book, 0L, 0.0))
+    return results.stream()
+        .map(result -> new BookSearchResult(
+            (Book) result[0],
+            ((Number) result[1]).longValue(),
+            ((Number) result[2]).doubleValue()
+        ))
         .toList();
   }
 
@@ -127,5 +169,37 @@ public class BookRepositoryCustomImpl implements BookRepositoryCustom {
     }
 
     return query.getSingleResult();
+  }
+
+  @Override
+  public Optional<BookSearchResult> findByIdWithReviewStats(UUID bookId) {
+
+    String jpql = """      
+          SELECT b, COUNT(r.id), COALESCE(AVG(r.rating), 0.0)
+        FROM Book b
+        LEFT JOIN Review r
+            ON r.book = b
+            AND r.deletedAt IS NULL
+        WHERE b.id = :bookId
+          AND b.deletedAt IS NULL
+        GROUP BY b
+        """;
+
+    List<Object[]> results = entityManager
+        .createQuery(jpql, Object[].class)
+        .setParameter("bookId", bookId)
+        .getResultList();
+
+    if (results.isEmpty()) {
+      return Optional.empty();
+    }
+
+    Object[] result = results.get(0);
+
+    return Optional.of(new BookSearchResult(
+        (Book) result[0],
+        ((Number) result[1]).longValue(),
+        ((Number) result[2]).doubleValue()
+    ));
   }
 }
