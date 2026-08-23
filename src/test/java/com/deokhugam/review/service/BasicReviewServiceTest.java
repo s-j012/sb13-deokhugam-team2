@@ -3,6 +3,7 @@ package com.deokhugam.review.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,9 +13,13 @@ import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.global.storage.Storage;
 import com.deokhugam.review.dto.request.ReviewCreateRequest;
+import com.deokhugam.review.dto.request.ReviewSearchRequest;
 import com.deokhugam.review.dto.request.ReviewUpdateRequest;
 import com.deokhugam.review.dto.response.ReviewDetailResponse;
+import com.deokhugam.review.dto.response.ReviewLikeResponse;
+import com.deokhugam.review.dto.response.ReviewListResponse;
 import com.deokhugam.review.entity.Review;
+import com.deokhugam.review.entity.ReviewLike;
 import com.deokhugam.review.exception.DuplicateReviewException;
 import com.deokhugam.review.exception.ReviewAccessDeniedException;
 import com.deokhugam.review.exception.ReviewNotFoundException;
@@ -25,7 +30,9 @@ import com.deokhugam.user.exception.UserException;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -547,6 +554,297 @@ class BasicReviewServiceTest {
         )).isInstanceOf(ReviewAccessDeniedException.class);
 
         assertThat(review.isDeleted()).isFalse();
+    }
+
+    @Test
+    void 좋아요가_없으면_좋아요를_추가한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        User author = createUser(authorId);
+        User requester = createUser(requesterId);
+        Book book = createBook(bookId);
+        Review review = createReview(reviewId, author, book);
+
+        given(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
+                .willReturn(Optional.of(review));
+
+        given(reviewLikeRepository.findByReviewIdAndUserId(
+                reviewId,
+                requesterId
+        )).willReturn(Optional.empty());
+
+        given(userRepository.findByIdAndDeletedAtIsNull(requesterId))
+                .willReturn(Optional.of(requester));
+
+        ReviewLikeResponse response = reviewService.toggleLike(
+                reviewId,
+                requesterId
+        );
+
+        assertThat(response.reviewId()).isEqualTo(reviewId);
+        assertThat(response.userId()).isEqualTo(requesterId);
+        assertThat(response.liked()).isTrue();
+        assertThat(review.getLikeCount()).isEqualTo(1);
+
+        verify(reviewLikeRepository).save(any(ReviewLike.class));
+    }
+
+    @Test
+    void 좋아요가_있으면_좋아요를_취소한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        User author = createUser(authorId);
+        User requester = createUser(requesterId);
+        Book book = createBook(bookId);
+        Review review = createReview(reviewId, author, book);
+        review.increaseLikeCount();
+
+        ReviewLike reviewLike = ReviewLike.create(
+                review,
+                requester
+        );
+
+        given(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
+                .willReturn(Optional.of(review));
+
+        given(userRepository.findByIdAndDeletedAtIsNull(requesterId))
+                .willReturn(Optional.of(requester));
+
+        given(reviewLikeRepository.findByReviewIdAndUserId(
+                reviewId,
+                requesterId
+        )).willReturn(Optional.of(reviewLike));
+
+        ReviewLikeResponse response = reviewService.toggleLike(
+                reviewId,
+                requesterId
+        );
+
+        assertThat(response.reviewId()).isEqualTo(reviewId);
+        assertThat(response.userId()).isEqualTo(requesterId);
+        assertThat(response.liked()).isFalse();
+        assertThat(review.getLikeCount()).isZero();
+
+        verify(reviewLikeRepository).delete(reviewLike);
+    }
+
+    @Test
+    void 활성_리뷰가_존재하지_않으면_좋아요에_실패한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+
+        given(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reviewService.toggleLike(
+                reviewId,
+                requesterId
+        )).isInstanceOf(ReviewNotFoundException.class);
+
+        verify(reviewLikeRepository, never())
+                .findByReviewIdAndUserId(
+                        any(UUID.class),
+                        any(UUID.class)
+                );
+    }
+
+    @Test
+    void 요청_사용자가_존재하지_않으면_좋아요_토글에_실패한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        User author = createUser(authorId);
+        Book book = createBook(bookId);
+        Review review = createReview(reviewId, author, book);
+
+        given(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
+                .willReturn(Optional.of(review));
+
+        given(userRepository.findByIdAndDeletedAtIsNull(requesterId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reviewService.toggleLike(
+                reviewId,
+                requesterId
+        )).isInstanceOf(UserException.class);
+
+        verify(reviewLikeRepository, never())
+                .findByReviewIdAndUserId(
+                        any(UUID.class),
+                        any(UUID.class)
+                );
+
+        verify(reviewLikeRepository, never())
+                .save(any(ReviewLike.class));
+    }
+
+    @Test
+    void 리뷰_목록을_조회하면_커서와_좋아요_여부를_반환한다() {
+        UUID requesterId = UUID.randomUUID();
+
+        UUID firstReviewId = UUID.randomUUID();
+        UUID secondReviewId = UUID.randomUUID();
+        UUID thirdReviewId = UUID.randomUUID();
+
+        LocalDateTime firstCreatedAt =
+                LocalDateTime.of(2026, 8, 21, 11, 0);
+        LocalDateTime secondCreatedAt =
+                LocalDateTime.of(2026, 8, 21, 10, 0);
+        LocalDateTime thirdCreatedAt =
+                LocalDateTime.of(2026, 8, 21, 9, 0);
+
+        User firstAuthor = createUser(UUID.randomUUID());
+        User secondAuthor = createUser(UUID.randomUUID());
+        User thirdAuthor = createUser(UUID.randomUUID());
+
+        Book firstBook = createBook(UUID.randomUUID());
+        Book secondBook = createBook(UUID.randomUUID());
+        Book thirdBook = createBook(UUID.randomUUID());
+
+        String thumbnailPath = "book-thumbnails/test.jpg";
+        String accessibleThumbnailUrl =
+                "https://example.com/book-thumbnails/test.jpg";
+
+        firstBook.updateThumbnailUrl(thumbnailPath);
+
+        Review firstReview = createReview(
+                firstReviewId,
+                firstAuthor,
+                firstBook
+        );
+        firstReview.update("평점 5점 리뷰", 5);
+        ReflectionTestUtils.setField(
+                firstReview,
+                "createdAt",
+                firstCreatedAt
+        );
+
+        Review secondReview = createReview(
+                secondReviewId,
+                secondAuthor,
+                secondBook
+        );
+        secondReview.update("평점 4점 리뷰", 4);
+        ReflectionTestUtils.setField(
+                secondReview,
+                "createdAt",
+                secondCreatedAt
+        );
+
+        Review thirdReview = createReview(
+                thirdReviewId,
+                thirdAuthor,
+                thirdBook
+        );
+        thirdReview.update("평점 3점 리뷰", 3);
+        ReflectionTestUtils.setField(
+                thirdReview,
+                "createdAt",
+                thirdCreatedAt
+        );
+
+        ReviewSearchRequest request = new ReviewSearchRequest(
+                null,
+                null,
+                null,
+                "rating",
+                "DESC",
+                null,
+                null,
+                2
+        );
+
+        given(reviewRepository.findAllByCursor(request))
+                .willReturn(List.of(
+                        firstReview,
+                        secondReview,
+                        thirdReview
+                ));
+
+        given(reviewRepository.countAll(request))
+                .willReturn(3L);
+
+        given(reviewLikeRepository.findLikedReviewIds(
+                requesterId,
+                Set.of(firstReviewId, secondReviewId)
+        )).willReturn(Set.of(secondReviewId));
+
+        given(storage.getUrl(thumbnailPath))
+                .willReturn(accessibleThumbnailUrl);
+
+        ReviewListResponse response = reviewService.findAll(
+                request,
+                requesterId
+        );
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.size()).isEqualTo(2);
+        assertThat(response.totalElements()).isEqualTo(3L);
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.nextCursor()).isEqualTo("4");
+        assertThat(response.nextAfter()).isEqualTo(secondCreatedAt);
+
+        assertThat(response.content().get(0).id())
+                .isEqualTo(firstReviewId);
+        assertThat(response.content().get(0).bookThumbnailUrl())
+                .isEqualTo(accessibleThumbnailUrl);
+        assertThat(response.content().get(0).likedByMe())
+                .isFalse();
+
+        assertThat(response.content().get(1).id())
+                .isEqualTo(secondReviewId);
+        assertThat(response.content().get(1).likedByMe())
+                .isTrue();
+
+        verify(storage).getUrl(thumbnailPath);
+    }
+
+    @Test
+    void 리뷰_목록이_비어있으면_다음_커서를_반환하지_않는다() {
+        UUID requesterId = UUID.randomUUID();
+
+        ReviewSearchRequest request = new ReviewSearchRequest(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        given(reviewRepository.findAllByCursor(request))
+                .willReturn(List.of());
+
+        given(reviewRepository.countAll(request))
+                .willReturn(0L);
+
+        ReviewListResponse response = reviewService.findAll(
+                request,
+                requesterId
+        );
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.size()).isZero();
+        assertThat(response.totalElements()).isZero();
+        assertThat(response.hasNext()).isFalse();
+        assertThat(response.nextCursor()).isNull();
+        assertThat(response.nextAfter()).isNull();
+
+        verify(reviewLikeRepository, never())
+                .findLikedReviewIds(
+                        any(UUID.class),
+                        anyCollection()
+                );
     }
 
     private Review createReview(

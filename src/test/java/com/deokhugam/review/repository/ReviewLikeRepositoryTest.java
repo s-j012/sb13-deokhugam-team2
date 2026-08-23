@@ -10,6 +10,8 @@ import com.deokhugam.review.entity.ReviewLike;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDate;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,6 +92,111 @@ class ReviewLikeRepositoryTest {
                 );
 
         assertThat(likedByMe).isFalse();
+    }
+
+    @Test
+    void 리뷰와_사용자_ID로_좋아요를_조회한다() {
+        User author = userRepository.save(
+                createUser("author@example.com", "작성자")
+        );
+        User requester = userRepository.save(
+                createUser("requester@example.com", "요청자")
+        );
+        Book book = bookRepository.save(createBook());
+
+        Review review = reviewRepository.save(
+                Review.create(
+                        author,
+                        book,
+                        "좋은 책입니다.",
+                        5
+                )
+        );
+
+        ReviewLike savedReviewLike =
+                reviewLikeRepository.saveAndFlush(
+                        ReviewLike.create(
+                                review,
+                                requester
+                        )
+                );
+
+        Optional<ReviewLike> result =
+                reviewLikeRepository.findByReviewIdAndUserId(
+                        review.getId(),
+                        requester.getId()
+                );
+
+        assertThat(result).contains(savedReviewLike);
+    }
+
+    @Test
+    void 여러_리뷰_중_사용자가_좋아요한_리뷰_ID를_조회한다() {
+        User author = userRepository.save(
+                createUser("author@example.com", "작성자")
+        );
+        User requester = userRepository.save(
+                createUser("requester@example.com", "요청자")
+        );
+
+        Book book1 = bookRepository.save(
+                new Book(
+                        "도서 1",
+                        "테스트 저자",
+                        "테스트 설명",
+                        "테스트 출판사",
+                        LocalDate.of(2026, 8, 21),
+                        UUID.randomUUID().toString()
+                )
+        );
+
+        Book book2 = bookRepository.save(
+                new Book(
+                        "도서 2",
+                        "테스트 저자",
+                        "테스트 설명",
+                        "테스트 출판사",
+                        LocalDate.of(2026, 8, 21),
+                        UUID.randomUUID().toString()
+                )
+        );
+
+        Review likedReview = reviewRepository.save(
+                Review.create(
+                        author,
+                        book1,
+                        "좋아요한 리뷰",
+                        5
+                )
+        );
+
+        Review notLikedReview = reviewRepository.save(
+                Review.create(
+                        author,
+                        book2,
+                        "좋아요하지 않은 리뷰",
+                        4
+                )
+        );
+
+        reviewLikeRepository.saveAndFlush(
+                ReviewLike.create(
+                        likedReview,
+                        requester
+                )
+        );
+
+        Set<UUID> likedReviewIds =
+                reviewLikeRepository.findLikedReviewIds(
+                        requester.getId(),
+                        Set.of(
+                                likedReview.getId(),
+                                notLikedReview.getId()
+                        )
+                );
+
+        assertThat(likedReviewIds)
+                .containsExactly(likedReview.getId());
     }
 
     private User createUser(

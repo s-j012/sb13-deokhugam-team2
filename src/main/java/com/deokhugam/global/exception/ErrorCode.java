@@ -9,6 +9,11 @@ public enum ErrorCode {
       "이미 등록된 ISBN입니다."
   ),
 
+  ISBN_OCR_FAILED(
+    HttpStatus.BAD_REQUEST,
+    "이미지에서 ISBN을 인식할 수 없습니다."
+  ),
+
   BOOK_NOT_FOUND(
       HttpStatus.NOT_FOUND,
       "도서를 찾을 수 없습니다."
