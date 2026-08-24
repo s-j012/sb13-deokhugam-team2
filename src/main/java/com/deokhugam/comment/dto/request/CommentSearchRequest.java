@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -50,10 +49,21 @@ public record CommentSearchRequest(
         }
 
         try {
-            LocalDateTime.parse(cursor);
+            UUID.fromString(cursor);
             return true;
-        } catch (DateTimeParseException exception) {
+        } catch (IllegalArgumentException exception) {
             return false;
         }
+    }
+
+    @AssertTrue(
+            message = "cursor를 사용하는 경우 after가 필요합니다."
+    )
+    public boolean isCursorAfterPairValid() {
+        if (cursor == null || cursor.isBlank()) {
+            return true;
+        }
+
+        return after != null;
     }
 }

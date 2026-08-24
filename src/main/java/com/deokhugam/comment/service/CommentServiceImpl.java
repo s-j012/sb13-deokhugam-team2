@@ -9,6 +9,8 @@ import com.deokhugam.comment.entity.Comment;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
+import com.deokhugam.user.entity.User;
+import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -37,7 +40,7 @@ public class CommentServiceImpl implements CommentService {
         Comment savedComment =
                 commentRepository.save(comment);
 
-        return CommentResponse.from(savedComment);
+        return toResponse(savedComment);
     }
 
     @Override
@@ -59,7 +62,7 @@ public class CommentServiceImpl implements CommentService {
 
         comment.updateContent(request.content());
 
-        return CommentResponse.from(comment);
+        return toResponse(comment);
     }
 
     @Override
@@ -96,7 +99,7 @@ public class CommentServiceImpl implements CommentService {
 
         List<CommentResponse> content =
                 comments.stream()
-                        .map(CommentResponse::from)
+                        .map(this::toResponse)
                         .toList();
 
         String nextCursor = null;
@@ -106,8 +109,12 @@ public class CommentServiceImpl implements CommentService {
             Comment lastComment =
                     comments.get(comments.size() - 1);
 
+            /*
+             * cursor = 마지막 댓글 ID
+             * after  = 마지막 댓글 생성 시간
+             */
             nextCursor =
-                    lastComment.getCreatedAt().toString();
+                    lastComment.getId().toString();
 
             nextAfter =
                     lastComment.getCreatedAt();
@@ -147,5 +154,20 @@ public class CommentServiceImpl implements CommentService {
                     ErrorCode.COMMENT_ACCESS_DENIED
             );
         }
+    }
+
+    private CommentResponse toResponse(
+            Comment comment
+    ) {
+        String userNickname =
+                userRepository
+                        .findById(comment.getUserId())
+                        .map(User::getNickname)
+                        .orElse("");
+
+        return CommentResponse.from(
+                comment,
+                userNickname
+        );
     }
 }

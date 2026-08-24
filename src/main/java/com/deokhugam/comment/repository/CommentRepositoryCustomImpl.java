@@ -4,8 +4,8 @@ import com.deokhugam.comment.dto.request.CommentSearchRequest;
 import com.deokhugam.comment.entity.Comment;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -37,12 +37,30 @@ public class CommentRepositoryCustomImpl
 
         boolean hasCursor =
                 request.cursor() != null
-                        && !request.cursor().isBlank();
+                        && !request.cursor().isBlank()
+                        && request.after() != null;
 
+        /*
+         * createdAt이 같은 댓글이 여러 개 존재할 수 있으므로
+         * createdAt + id를 복합 커서로 사용한다.
+         *
+         * DESC:
+         * createdAt < after
+         * 또는
+         * createdAt = after && id < cursor
+         *
+         * ASC는 반대.
+         */
         if (hasCursor) {
-            jpql.append(" AND c.createdAt ")
+            jpql.append(" AND (")
+                    .append("c.createdAt ")
                     .append(operator)
-                    .append(" :cursor");
+                    .append(" :after")
+                    .append(" OR (c.createdAt = :after")
+                    .append(" AND c.id ")
+                    .append(operator)
+                    .append(" :cursor)")
+                    .append(")");
         }
 
         jpql.append(" ORDER BY c.createdAt ")
@@ -63,12 +81,19 @@ public class CommentRepositoryCustomImpl
 
         if (hasCursor) {
             query.setParameter(
+                    "after",
+                    request.after()
+            );
+
+            query.setParameter(
                     "cursor",
-                    LocalDateTime.parse(request.cursor())
+                    UUID.fromString(request.cursor())
             );
         }
 
-        query.setMaxResults(request.limit() + 1);
+        query.setMaxResults(
+                request.limit() + 1
+        );
 
         return query.getResultList();
     }
