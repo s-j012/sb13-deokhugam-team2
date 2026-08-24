@@ -63,6 +63,7 @@ public class Notification extends BaseEntity {
 
   // 객체지향적인 비즈니스 메서드 추가(알림 읽음 처리용)
   public void read() {
+    if (this.isConfirmed) return; //이미 읽었을 경우 다음 읽어도 무시
     this.isConfirmed = true;
     this.confirmedAt = LocalDateTime.now();
   }
