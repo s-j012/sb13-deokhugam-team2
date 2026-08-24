@@ -7,10 +7,12 @@ import java.util.UUID;
 public record NotificationDto(
     UUID id,
     UUID userId,
-    UUID review,
-    String content,
+    UUID reviewId,
+    String reviewContent,
+    String message,
+    boolean confirmed,
     LocalDateTime confirmedAt,
     LocalDateTime createdAt,
-    NotificationType type,
-    boolean isConfirmed
+    LocalDateTime updatedAt,
+    NotificationType type
 ) { }

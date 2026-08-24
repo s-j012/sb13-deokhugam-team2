@@ -26,7 +26,7 @@ public class NotificationController {
       @RequestHeader("Deokhugam-Request-User-ID")UUID userId,
       @RequestBody NotificationUpdateRequest request
       ) {
-    NotificationDto result = notificationService.readNotification(notificationId, userId);
+    NotificationDto result = notificationService.readNotification(notificationId, userId, request);
     return ResponseEntity.ok(result);
   }
 }

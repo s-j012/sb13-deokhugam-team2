@@ -2,6 +2,7 @@ package com.deokhugam.notifications.service;
 
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
+import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notifications.dto.response.NotificationDto;
 import com.deokhugam.notifications.entity.Notification;
 import com.deokhugam.notifications.repository.NotificationRepository;
@@ -17,7 +18,7 @@ public class NotificationService {
   private final NotificationRepository notificationRepository;
 
   @Transactional
-  public NotificationDto readNotification(UUID notificationId, UUID userId) {
+  public NotificationDto readNotification(UUID notificationId, UUID userId, NotificationUpdateRequest request) {
     Notification notification = notificationRepository.findById(notificationId)
         .orElseThrow(()-> new DeokhugamException(ErrorCode.NOTIFICATION_NOT_FOUND));
 
@@ -25,17 +26,19 @@ public class NotificationService {
       throw new DeokhugamException(ErrorCode.FORBIDDEN); // 403
     }
 
-    notification.read();
+    notification.updateConfirmStatus(request.confirmed());
 
     return new NotificationDto(
         notification.getId(),
         notification.getUser().getId(),
         notification.getReview().getId(),
+        notification.getReview().getContent(),
         notification.getContent(),
+        notification.isConfirmed(),
         notification.getConfirmedAt(),
         notification.getCreatedAt(),
-        notification.getType(),
-        notification.isConfirmed()
+        notification.getUpdatedAt(),
+        notification.getType()
     );
   }
 
