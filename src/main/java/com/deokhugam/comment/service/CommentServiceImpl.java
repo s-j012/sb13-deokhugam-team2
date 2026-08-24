@@ -1,6 +1,7 @@
 package com.deokhugam.comment.service;
 
 import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentSearchRequest;
 import com.deokhugam.comment.dto.request.CommentUpdateRequest;
 import com.deokhugam.comment.dto.response.CommentListResponse;
 import com.deokhugam.comment.dto.response.CommentResponse;
@@ -12,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,15 +25,17 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public CommentResponse create(CommentCreateRequest request) {
-
+    public CommentResponse create(
+            CommentCreateRequest request
+    ) {
         Comment comment = new Comment(
                 request.content(),
                 request.userId(),
                 request.reviewId()
         );
 
-        Comment savedComment = commentRepository.save(comment);
+        Comment savedComment =
+                commentRepository.save(comment);
 
         return CommentResponse.from(savedComment);
     }
@@ -42,12 +44,12 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public CommentResponse update(
             UUID commentId,
-            UUID userId,
+            UUID requesterId,
             CommentUpdateRequest request
     ) {
         Comment comment = findComment(commentId);
 
-        validateOwner(comment, userId);
+        validateOwner(comment, requesterId);
 
         if (comment.isDeleted()) {
             throw new DeokhugamException(
@@ -64,11 +66,11 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void delete(
             UUID commentId,
-            UUID userId
+            UUID requesterId
     ) {
         Comment comment = findComment(commentId);
 
-        validateOwner(comment, userId);
+        validateOwner(comment, requesterId);
 
         if (!comment.isDeleted()) {
             comment.softDelete();
@@ -77,40 +79,58 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public CommentListResponse findAll(
-            UUID reviewId,
-            LocalDateTime after,
-            int limit
+            CommentSearchRequest request
     ) {
-        PageRequest pageable = PageRequest.of(0, limit);
+        List<Comment> searchedComments =
+                commentRepository.findAllByCursor(request);
 
-        List<Comment> comments;
+        boolean hasNext =
+                searchedComments.size() > request.limit();
 
-        if (after == null) {
-            comments =
-                    commentRepository
-                            .findByReviewIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(
-                                    reviewId,
-                                    pageable
-                            );
-        } else {
-            comments =
-                    commentRepository
-                            .findByReviewIdAndDeletedAtIsNullAndCreatedAtAfterOrderByCreatedAtAscIdAsc(
-                                    reviewId,
-                                    after,
-                                    pageable
-                            );
+        List<Comment> comments = hasNext
+                ? searchedComments.subList(
+                0,
+                request.limit()
+        )
+                : searchedComments;
+
+        List<CommentResponse> content =
+                comments.stream()
+                        .map(CommentResponse::from)
+                        .toList();
+
+        String nextCursor = null;
+        LocalDateTime nextAfter = null;
+
+        if (hasNext && !comments.isEmpty()) {
+            Comment lastComment =
+                    comments.get(comments.size() - 1);
+
+            nextCursor =
+                    lastComment.getCreatedAt().toString();
+
+            nextAfter =
+                    lastComment.getCreatedAt();
         }
 
-        List<CommentResponse> responses = comments.stream()
-                .map(CommentResponse::from)
-                .toList();
+        long totalElements =
+                commentRepository.countAll(request);
 
-        return new CommentListResponse(responses);
+        return new CommentListResponse(
+                content,
+                nextCursor,
+                nextAfter,
+                content.size(),
+                totalElements,
+                hasNext
+        );
     }
 
-    private Comment findComment(UUID commentId) {
-        return commentRepository.findById(commentId)
+    private Comment findComment(
+            UUID commentId
+    ) {
+        return commentRepository
+                .findById(commentId)
                 .orElseThrow(
                         () -> new DeokhugamException(
                                 ErrorCode.COMMENT_NOT_FOUND
@@ -120,9 +140,9 @@ public class CommentServiceImpl implements CommentService {
 
     private void validateOwner(
             Comment comment,
-            UUID userId
+            UUID requesterId
     ) {
-        if (!comment.getUserId().equals(userId)) {
+        if (!comment.getUserId().equals(requesterId)) {
             throw new DeokhugamException(
                     ErrorCode.COMMENT_ACCESS_DENIED
             );

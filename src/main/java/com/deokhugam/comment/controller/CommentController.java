@@ -1,78 +1,76 @@
 package com.deokhugam.comment.controller;
 
 import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentSearchRequest;
 import com.deokhugam.comment.dto.request.CommentUpdateRequest;
 import com.deokhugam.comment.dto.response.CommentListResponse;
 import com.deokhugam.comment.dto.response.CommentResponse;
 import com.deokhugam.comment.service.CommentService;
 import jakarta.validation.Valid;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
 public class CommentController {
 
+    private static final String REQUEST_USER_ID_HEADER =
+            "Deokhugam-Request-User-ID";
+
     private final CommentService commentService;
 
     @PostMapping
-    public CommentResponse create(
+    public ResponseEntity<CommentResponse> create(
             @Valid @RequestBody CommentCreateRequest request
     ) {
-        return commentService.create(request);
+        CommentResponse response =
+                commentService.create(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @PatchMapping("/{commentId}")
-    public CommentResponse update(
+    public ResponseEntity<CommentResponse> update(
             @PathVariable UUID commentId,
-            @RequestParam UUID userId,
+            @RequestHeader(REQUEST_USER_ID_HEADER) UUID requesterId,
             @Valid @RequestBody CommentUpdateRequest request
     ) {
-        return commentService.update(
-                commentId,
-                userId,
-                request
-        );
+        CommentResponse response =
+                commentService.update(
+                        commentId,
+                        requesterId,
+                        request
+                );
+
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{commentId}")
-    public void delete(
+    public ResponseEntity<Void> delete(
             @PathVariable UUID commentId,
-            @RequestParam UUID userId
+            @RequestHeader(REQUEST_USER_ID_HEADER) UUID requesterId
     ) {
         commentService.delete(
                 commentId,
-                userId
+                requesterId
         );
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
-    public CommentListResponse findAll(
-            @RequestParam UUID reviewId,
-
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime after,
-
-            @RequestParam(defaultValue = "20")
-            int limit
+    public ResponseEntity<CommentListResponse> findAll(
+            @Valid @ModelAttribute CommentSearchRequest request
     ) {
-        return commentService.findAll(
-                reviewId,
-                after,
-                limit
-        );
+        CommentListResponse response =
+                commentService.findAll(request);
+
+        return ResponseEntity.ok(response);
     }
 }

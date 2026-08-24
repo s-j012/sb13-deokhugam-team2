@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.deokhugam.comment.dto.request.CommentCreateRequest;
+import com.deokhugam.comment.dto.request.CommentSearchRequest;
 import com.deokhugam.comment.dto.request.CommentUpdateRequest;
 import com.deokhugam.comment.dto.response.CommentListResponse;
 import com.deokhugam.comment.dto.response.CommentResponse;
@@ -36,6 +37,9 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 @ExtendWith(MockitoExtension.class)
 class CommentControllerTest {
 
+    private static final String REQUEST_USER_ID_HEADER =
+            "Deokhugam-Request-User-ID";
+
     private MockMvc mockMvc;
 
     private ObjectMapper objectMapper;
@@ -45,7 +49,6 @@ class CommentControllerTest {
 
     @BeforeEach
     void setUp() {
-
         CommentController commentController =
                 new CommentController(commentService);
 
@@ -64,10 +67,9 @@ class CommentControllerTest {
     }
 
     @Test
-    @DisplayName("댓글을 등록할 수 있다")
+    @DisplayName("댓글을 등록하면 201 Created를 반환한다")
     void createComment() throws Exception {
 
-        // given
         UUID commentId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
@@ -85,14 +87,13 @@ class CommentControllerTest {
                         userId,
                         reviewId,
                         "테스트 댓글입니다.",
-                        LocalDateTime.of(2026, 8, 18, 10, 0),
-                        LocalDateTime.of(2026, 8, 18, 10, 0)
+                        LocalDateTime.of(2026, 8, 23, 10, 0),
+                        LocalDateTime.of(2026, 8, 23, 10, 0)
                 );
 
         when(commentService.create(any(CommentCreateRequest.class)))
                 .thenReturn(response);
 
-        // when & then
         mockMvc.perform(
                         post("/api/comments")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -100,7 +101,7 @@ class CommentControllerTest {
                                         objectMapper.writeValueAsString(request)
                                 )
                 )
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(
                         jsonPath("$.id")
                                 .value(commentId.toString())
@@ -120,10 +121,9 @@ class CommentControllerTest {
     }
 
     @Test
-    @DisplayName("댓글 내용을 수정할 수 있다")
+    @DisplayName("댓글을 수정할 수 있다")
     void updateComment() throws Exception {
 
-        // given
         UUID commentId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
@@ -139,8 +139,8 @@ class CommentControllerTest {
                         userId,
                         reviewId,
                         "수정된 댓글",
-                        LocalDateTime.of(2026, 8, 18, 10, 0),
-                        LocalDateTime.of(2026, 8, 18, 11, 0)
+                        LocalDateTime.of(2026, 8, 23, 10, 0),
+                        LocalDateTime.of(2026, 8, 23, 11, 0)
                 );
 
         when(
@@ -151,23 +151,18 @@ class CommentControllerTest {
                 )
         ).thenReturn(response);
 
-        // when & then
         mockMvc.perform(
                         patch(
                                 "/api/comments/{commentId}",
                                 commentId
                         )
-                                .param(
-                                        "userId",
+                                .header(
+                                        REQUEST_USER_ID_HEADER,
                                         userId.toString()
                                 )
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        objectMapper.writeValueAsString(request)
                                 )
                 )
                 .andExpect(status().isOk())
@@ -182,10 +177,9 @@ class CommentControllerTest {
     }
 
     @Test
-    @DisplayName("댓글을 삭제할 수 있다")
+    @DisplayName("댓글을 삭제하면 204 No Content를 반환한다")
     void deleteComment() throws Exception {
 
-        // given
         UUID commentId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
@@ -193,18 +187,17 @@ class CommentControllerTest {
                 .when(commentService)
                 .delete(commentId, userId);
 
-        // when & then
         mockMvc.perform(
                         delete(
                                 "/api/comments/{commentId}",
                                 commentId
                         )
-                                .param(
-                                        "userId",
+                                .header(
+                                        REQUEST_USER_ID_HEADER,
                                         userId.toString()
                                 )
                 )
-                .andExpect(status().isOk())
+                .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
     }
 
@@ -212,7 +205,6 @@ class CommentControllerTest {
     @DisplayName("리뷰별 댓글 목록을 조회할 수 있다")
     void findAllComments() throws Exception {
 
-        // given
         UUID reviewId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
@@ -222,8 +214,8 @@ class CommentControllerTest {
                         userId,
                         reviewId,
                         "첫 번째 댓글",
-                        LocalDateTime.of(2026, 8, 18, 10, 0),
-                        LocalDateTime.of(2026, 8, 18, 10, 0)
+                        LocalDateTime.of(2026, 8, 23, 11, 0),
+                        LocalDateTime.of(2026, 8, 23, 11, 0)
                 );
 
         CommentResponse second =
@@ -232,24 +224,26 @@ class CommentControllerTest {
                         userId,
                         reviewId,
                         "두 번째 댓글",
-                        LocalDateTime.of(2026, 8, 18, 11, 0),
-                        LocalDateTime.of(2026, 8, 18, 11, 0)
+                        LocalDateTime.of(2026, 8, 23, 10, 0),
+                        LocalDateTime.of(2026, 8, 23, 10, 0)
                 );
 
         CommentListResponse response =
                 new CommentListResponse(
-                        List.of(first, second)
+                        List.of(first, second),
+                        null,
+                        null,
+                        2,
+                        2L,
+                        false
                 );
 
         when(
                 commentService.findAll(
-                        eq(reviewId),
-                        eq(null),
-                        eq(20)
+                        any(CommentSearchRequest.class)
                 )
         ).thenReturn(response);
 
-        // when & then
         mockMvc.perform(
                         get("/api/comments")
                                 .param(
@@ -259,49 +253,53 @@ class CommentControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(
-                        jsonPath("$.comments.length()")
+                        jsonPath("$.content.length()")
                                 .value(2)
                 )
                 .andExpect(
-                        jsonPath("$.comments[0].content")
+                        jsonPath("$.content[0].content")
                                 .value("첫 번째 댓글")
                 )
                 .andExpect(
-                        jsonPath("$.comments[1].content")
+                        jsonPath("$.content[1].content")
                                 .value("두 번째 댓글")
+                )
+                .andExpect(
+                        jsonPath("$.size")
+                                .value(2)
+                )
+                .andExpect(
+                        jsonPath("$.totalElements")
+                                .value(2)
+                )
+                .andExpect(
+                        jsonPath("$.hasNext")
+                                .value(false)
                 );
     }
 
     @Test
-    @DisplayName("after와 limit으로 댓글 목록을 조회할 수 있다")
-    void findAllCommentsWithAfterAndLimit() throws Exception {
+    @DisplayName("direction, cursor, after, limit으로 댓글 목록을 조회할 수 있다")
+    void findAllCommentsWithCursor() throws Exception {
 
-        // given
         UUID reviewId = UUID.randomUUID();
-
-        LocalDateTime after =
-                LocalDateTime.of(
-                        2026,
-                        8,
-                        18,
-                        10,
-                        0
-                );
 
         CommentListResponse response =
                 new CommentListResponse(
-                        List.of()
+                        List.of(),
+                        null,
+                        null,
+                        0,
+                        0L,
+                        false
                 );
 
         when(
                 commentService.findAll(
-                        eq(reviewId),
-                        eq(after),
-                        eq(10)
+                        any(CommentSearchRequest.class)
                 )
         ).thenReturn(response);
 
-        // when & then
         mockMvc.perform(
                         get("/api/comments")
                                 .param(
@@ -309,8 +307,16 @@ class CommentControllerTest {
                                         reviewId.toString()
                                 )
                                 .param(
+                                        "direction",
+                                        "DESC"
+                                )
+                                .param(
+                                        "cursor",
+                                        "2026-08-23T10:00:00"
+                                )
+                                .param(
                                         "after",
-                                        "2026-08-18T10:00:00"
+                                        "2026-08-23T10:00:00"
                                 )
                                 .param(
                                         "limit",
@@ -319,8 +325,12 @@ class CommentControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(
-                        jsonPath("$.comments.length()")
+                        jsonPath("$.content.length()")
                                 .value(0)
+                )
+                .andExpect(
+                        jsonPath("$.hasNext")
+                                .value(false)
                 );
     }
 
@@ -328,7 +338,6 @@ class CommentControllerTest {
     @DisplayName("댓글 등록 시 내용이 비어 있으면 400을 반환한다")
     void createCommentWithBlankContent() throws Exception {
 
-        // given
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
 
@@ -339,16 +348,11 @@ class CommentControllerTest {
                         ""
                 );
 
-        // when & then
         mockMvc.perform(
                         post("/api/comments")
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        objectMapper.writeValueAsString(request)
                                 )
                 )
                 .andExpect(status().isBadRequest());
@@ -358,30 +362,24 @@ class CommentControllerTest {
     @DisplayName("댓글 수정 시 내용이 비어 있으면 400을 반환한다")
     void updateCommentWithBlankContent() throws Exception {
 
-        // given
         UUID commentId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
         CommentUpdateRequest request =
                 new CommentUpdateRequest("");
 
-        // when & then
         mockMvc.perform(
                         patch(
                                 "/api/comments/{commentId}",
                                 commentId
                         )
-                                .param(
-                                        "userId",
+                                .header(
+                                        REQUEST_USER_ID_HEADER,
                                         userId.toString()
                                 )
-                                .contentType(
-                                        MediaType.APPLICATION_JSON
-                                )
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        objectMapper.writeValueAsString(
-                                                request
-                                        )
+                                        objectMapper.writeValueAsString(request)
                                 )
                 )
                 .andExpect(status().isBadRequest());
