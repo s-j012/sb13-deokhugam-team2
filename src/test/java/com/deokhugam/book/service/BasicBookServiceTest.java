@@ -34,7 +34,14 @@ import com.deokhugam.book.external.ocr.OcrSpaceClient;
 import com.deokhugam.book.external.ocr.OcrSpaceResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.comment.repository.CommentRepository;
+import com.deokhugam.dashboard.repository.BookRankingRepository;
+import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.storage.Storage;
+import com.deokhugam.notifications.repository.NotificationRepository;
+import com.deokhugam.review.entity.Review;
+import com.deokhugam.review.repository.ReviewLikeRepository;
+import com.deokhugam.review.repository.ReviewRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -76,6 +83,24 @@ class BasicBookServiceTest {
 
   @Mock
   OcrSpaceClient ocrSpaceClient;
+
+  @Mock
+  private ReviewRepository reviewRepository;
+
+  @Mock
+  private ReviewLikeRepository reviewLikeRepository;
+
+  @Mock
+  private CommentRepository commentRepository;
+
+  @Mock
+  private NotificationRepository notificationRepository;
+
+  @Mock
+  private ReviewRankingRepository reviewRankingRepository;
+
+  @Mock
+  private BookRankingRepository bookRankingRepository;
 
   @BeforeEach
   void setUp() {
@@ -659,5 +684,81 @@ class BasicBookServiceTest {
     assertThatThrownBy(() ->
         basicBookService.extractIsbnFromImage(image)
     ).isInstanceOf(IsbnOcrFailedException.class);
+  }
+
+  @Test
+  @DisplayName("도서를 물리 삭제하면 연관 데이터와 썸네일까지 함께 삭제한다")
+  void hardDeleteBook() {
+    // given
+    UUID bookId = UUID.randomUUID();
+    UUID reviewId = UUID.randomUUID();
+
+    Book book = mock(Book.class);
+    Review review = mock(Review.class);
+
+    given(bookRepository.findById(bookId))
+        .willReturn(Optional.of(book));
+
+    given(reviewRepository.findAllByBookId(bookId))
+        .willReturn(List.of(review));
+
+    given(review.getId())
+        .willReturn(reviewId);
+
+    given(book.getThumbnailUrl())
+        .willReturn("books/test.jpg");
+
+    // when
+    basicBookService.hardDelete(bookId);
+
+    // then
+    then(reviewLikeRepository)
+        .should()
+        .deleteAllByReviewId(reviewId);
+
+    then(notificationRepository)
+        .should()
+        .deleteAllByReviewId(reviewId);
+
+    then(commentRepository)
+        .should()
+        .deleteAllByReviewId(reviewId);
+
+    then(reviewRankingRepository)
+        .should()
+        .deleteAllByReviewId(reviewId);
+
+    then(reviewRepository)
+        .should()
+        .deleteAll(List.of(review));
+
+    then(bookRankingRepository)
+        .should()
+        .deleteAllByBookId(bookId);
+
+    then(storage)
+        .should()
+        .delete("books/test.jpg");
+
+    then(bookRepository)
+        .should()
+        .delete(book);
+  }
+
+  @Test
+  @DisplayName("존재하지 않는 도서를 물리 삭제하면 예외가 발생한다")
+  void hardDeleteBookNotFound() {
+    // given
+    UUID bookId = UUID.randomUUID();
+
+    given(bookRepository.findById(bookId))
+        .willReturn(Optional.empty());
+
+    // when & then
+    assertThatThrownBy(() -> basicBookService.hardDelete(bookId))
+        .isInstanceOf(BookNotFoundException.class);
+
+    then(reviewRepository)
+        .shouldHaveNoInteractions();
   }
 }

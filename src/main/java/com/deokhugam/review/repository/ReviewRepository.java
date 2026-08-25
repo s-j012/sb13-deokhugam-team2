@@ -19,4 +19,7 @@ public interface ReviewRepository
     Optional<Review> findByIdAndDeletedAtIsNull(UUID reviewId);
 
     List<Review> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
+
+    // 도서 물리 삭제 시 연관 리뷰 조회
+    List<Review> findAllByBookId(UUID bookId);
 }
