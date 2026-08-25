@@ -34,4 +34,7 @@ public interface ReviewLikeRepository
             @Param("userId") UUID userId,
             @Param("reviewIds") Collection<UUID> reviewIds
     );
+
+    // 도서 물리 삭제 시 리뷰 좋아요 일괄 삭제
+    void deleteAllByReviewId(UUID reviewId);
 }

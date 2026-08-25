@@ -93,6 +93,14 @@ public class BookController {
     return ResponseEntity.noContent().build();
   }
 
+  @DeleteMapping("/{bookId}/hard")
+  public ResponseEntity<Void> hardDelete(
+      @PathVariable UUID bookId
+  ) {
+    bookService.hardDelete(bookId);
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping("/info")
   public ResponseEntity<BookInfoResponse> findBookInfoByIsbn(
       @RequestParam
