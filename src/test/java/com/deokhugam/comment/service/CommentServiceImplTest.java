@@ -16,6 +16,7 @@ import com.deokhugam.comment.entity.Comment;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
+import com.deokhugam.review.exception.ReviewNotFoundException;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -29,6 +30,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.deokhugam.review.repository.ReviewRepository;
+import com.deokhugam.review.entity.Review;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceImplTest {
@@ -39,6 +44,9 @@ class CommentServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ReviewRepository reviewRepository;
+
     private CommentServiceImpl commentService;
 
     @BeforeEach
@@ -46,7 +54,8 @@ class CommentServiceImplTest {
         commentService =
                 new CommentServiceImpl(
                         commentRepository,
-                        userRepository
+                        userRepository,
+                        reviewRepository
                 );
     }
 
@@ -64,6 +73,12 @@ class CommentServiceImplTest {
                         reviewId,
                         "테스트 댓글입니다."
                 );
+
+        Review review = mock(Review.class);
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
+        ).thenReturn(Optional.of(review));
 
         User user = mock(User.class);
 
@@ -623,6 +638,13 @@ class CommentServiceImplTest {
                         "댓글"
                 );
 
+        // ★ 활성 리뷰 존재 설정 추가
+        Review review = mock(Review.class);
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
+        ).thenReturn(Optional.of(review));
+
         when(commentRepository.save(any(Comment.class)))
                 .thenAnswer(
                         invocation ->
@@ -639,5 +661,36 @@ class CommentServiceImplTest {
         // then
         assertThat(response.userNickname())
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("활성 상태가 아닌 리뷰에는 댓글을 등록할 수 없다")
+    void createCommentWithInactiveReview() {
+
+        UUID userId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+
+        CommentCreateRequest request =
+                new CommentCreateRequest(
+                        userId,
+                        reviewId,
+                        "댓글 내용"
+                );
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(
+                        reviewId
+                )
+        ).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> commentService.create(request)
+        )
+                .isInstanceOf(ReviewNotFoundException.class);
+
+        verify(
+                commentRepository,
+                never()
+        ).save(any(Comment.class));
     }
 }
