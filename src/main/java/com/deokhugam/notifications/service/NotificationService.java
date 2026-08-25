@@ -5,7 +5,10 @@ import com.deokhugam.global.exception.ErrorCode;
 import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notifications.dto.response.NotificationDto;
 import com.deokhugam.notifications.entity.Notification;
+import com.deokhugam.notifications.entity.NotificationType;
 import com.deokhugam.notifications.repository.NotificationRepository;
+import com.deokhugam.review.entity.Review;
+import com.deokhugam.user.entity.User;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -78,4 +81,30 @@ public class NotificationService {
         .toList(); // 자바 16 이상 최신 문법!
   }
 
+  @Transactional
+  public NotificationDto createNotification(User receiver, Review review, String content, NotificationType type) {
+
+    // 1. 알림 엔티티 생성 (Builder 사용, 초기 상태는 무조건 isConfirmed = false)
+    Notification notification = Notification.builder()
+        .user(receiver) // 알림을 받을 사람 (예: 리뷰 작성자)
+        .review(review) // 어떤 리뷰에서 발생했는지
+        .content(content) // 알림 메시지 ("OOO님이 좋아요를...")
+        .type(type)
+        .build();
+    // 2. DB에 저장
+    Notification savedNotification = notificationRepository.save(notification);
+    // 3. 응답용 DTO로 변환하여 반환
+    return new NotificationDto(
+        savedNotification.getId(),
+        savedNotification.getUser().getId(),
+        savedNotification.getReview().getId(),
+        savedNotification.getReview().getContent(),
+        savedNotification.getContent(),
+        savedNotification.isConfirmed(),
+        savedNotification.getConfirmedAt(),
+        savedNotification.getCreatedAt(),
+        savedNotification.getUpdatedAt(),
+        savedNotification.getType()
+    );
+  }
 }

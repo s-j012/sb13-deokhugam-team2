@@ -2,6 +2,7 @@ package com.deokhugam.notifications.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -64,7 +65,8 @@ class ReadNotificationTest {
     NotificationUpdateRequest requestDto = new NotificationUpdateRequest(true);
 
     // when
-    NotificationDto result = notificationService.readNotification(notificationId, userId, requestDto);
+    NotificationDto result = notificationService.readNotification(notificationId, userId,
+        requestDto);
 
     // then
     assertThat(result.confirmed()).isTrue();
@@ -87,24 +89,27 @@ class ReadNotificationTest {
         .willReturn(Optional.of(mockNotification));
 
     // 1. 먼저 읽음(true) 처리
-    notificationService.readNotification(notificationId, userId, new NotificationUpdateRequest(true));
+    notificationService.readNotification(notificationId, userId,
+        new NotificationUpdateRequest(true));
 
     // 2. 다시 안 읽음(false) 상자를 만들어서 전송
     NotificationUpdateRequest requestDto = new NotificationUpdateRequest(false);
 
     // when
-    NotificationDto result = notificationService.readNotification(notificationId, userId, requestDto);
+    NotificationDto result = notificationService.readNotification(notificationId, userId,
+        requestDto);
 
     // then
     assertThat(result.confirmed()).isFalse();
     assertThat(result.confirmedAt()).isNull(); // 시간이 다시 지워져야 함!
   }
+
   @Test
   @DisplayName("타인의 알림 접근 시 FORBIDDEN(403) 예외가 발생한다")
   void updateNotification_Fail_Forbidden() {
     // given
     UUID ownerId = UUID.randomUUID();
-    UUID requesterId = UUID.randomUUID(); // 다른 사용자!
+    UUID requesterId = UUID.randomUUID(); // 다른 사용자
     UUID notificationId = UUID.randomUUID();
 
     Notification mockNotification = createMockNotification(ownerId, UUID.randomUUID());
@@ -113,8 +118,41 @@ class ReadNotificationTest {
     NotificationUpdateRequest requestDto = new NotificationUpdateRequest(true);
 
     // when & then
-    assertThatThrownBy(() -> notificationService.readNotification(notificationId, requesterId, requestDto))
+    assertThatThrownBy(
+        () -> notificationService.readNotification(notificationId, requesterId, requestDto))
         .isInstanceOf(DeokhugamException.class)
         .hasMessageContaining("권한이 없습니다"); // ErrorCode.FORBIDDEN의 메시지
+  }
+
+  @Test
+  @DisplayName("새로운 알림 생성 시 DB에 저장되고 DTO를 반환한다")
+  void createNotification_Success() {
+    // given
+    UUID ownerId = UUID.randomUUID();
+    UUID reviewId = UUID.randomUUID();
+
+    // 유저와 리뷰 정보만 빼오기 위해 헬퍼 사용
+    Notification tempNotification = createMockNotification(ownerId, reviewId);
+
+    // [수정된 부분] DB에서 튀어나올 결과물을 우리가 기대하는 메시지로 직접 조립합니다.
+    Notification expectedNotification = Notification.builder()
+        .user(tempNotification.getUser())
+        .review(tempNotification.getReview())
+        .content("OOO님이 좋아요를 눌렀습니다.") // 기대하는 메시지로 세팅!
+        .type(NotificationType.REVIEW_LIKE)
+        .build();
+    // DB에 save()를 하면 expectedNotification이 튀어나온다고 설정
+    given(notificationRepository.save(any(Notification.class)))
+        .willReturn(expectedNotification);
+    // when
+    NotificationDto result = notificationService.createNotification(
+        tempNotification.getUser(),
+        tempNotification.getReview(),
+        "OOO님이 좋아요를 눌렀습니다.",
+        NotificationType.REVIEW_LIKE
+    );
+    // then
+    assertThat(result.message()).isEqualTo("OOO님이 좋아요를 눌렀습니다.");
+    assertThat(result.confirmed()).isFalse();
   }
 }
