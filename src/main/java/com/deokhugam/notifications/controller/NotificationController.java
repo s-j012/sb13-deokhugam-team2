@@ -29,4 +29,15 @@ public class NotificationController {
     NotificationDto result = notificationService.readNotification(notificationId, userId, request);
     return ResponseEntity.ok(result);
   }
+
+  @PatchMapping
+  public ResponseEntity<Void> readAllNotification(
+      @RequestHeader ("Deokhugam-Request-User-ID") UUID userId
+  ) {
+
+    notificationService.readAllNotification(userId);
+    return ResponseEntity.ok().build();
+  }
+
+
 }

@@ -1,16 +1,16 @@
-package com.deokhugam.notification.service;
+package com.deokhugam.notifications.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notifications.dto.response.NotificationDto;
 import com.deokhugam.notifications.entity.Notification;
 import com.deokhugam.notifications.entity.NotificationType;
 import com.deokhugam.notifications.repository.NotificationRepository;
-import com.deokhugam.notifications.service.NotificationService;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.user.entity.User;
 import java.util.Optional;
@@ -26,7 +26,7 @@ import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class NotificationServiceTest {
+class ReadNotificationTest {
 
   @Mock
   private NotificationRepository notificationRepository;

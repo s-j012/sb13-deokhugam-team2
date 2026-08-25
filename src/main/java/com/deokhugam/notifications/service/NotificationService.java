@@ -6,6 +6,7 @@ import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notifications.dto.response.NotificationDto;
 import com.deokhugam.notifications.entity.Notification;
 import com.deokhugam.notifications.repository.NotificationRepository;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -41,5 +42,16 @@ public class NotificationService {
         notification.getType()
     );
   }
+
+  @Transactional
+  public void readAllNotification(UUID userId){
+    List<Notification> unreadNotificarion = notificationRepository.findAllByUserIdAndIsConfirmedFalse(userId);
+
+    // 가져온 알림들을 하나씩 꺼내어 무조건 읽음(true)으로 바꿉니다.
+    for(Notification notifications : unreadNotificarion) {
+      notifications.updateConfirmStatus(true);
+    }
+  }
+
 
 }
