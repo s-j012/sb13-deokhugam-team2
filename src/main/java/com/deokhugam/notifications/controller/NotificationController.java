@@ -3,14 +3,18 @@ package com.deokhugam.notifications.controller;
 import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notifications.dto.response.NotificationDto;
 import com.deokhugam.notifications.service.NotificationService;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -39,5 +43,13 @@ public class NotificationController {
     return ResponseEntity.ok().build();
   }
 
-
+  @GetMapping
+  public ResponseEntity<List<NotificationDto>> getNotifications(
+      @RequestHeader("Deokhugam-Request-User-ID") UUID userId,
+      @RequestParam(required = false) LocalDateTime cursor, // 처음 요청 시엔 null일 수 있으므로 false
+      @RequestParam(defaultValue = "10") int size // 안 보내면 기본값 10개
+  ) {
+    List<NotificationDto> result = notificationService.getNotifications(userId, cursor, size);
+    return ResponseEntity.ok(result);
+  }
 }

@@ -2,6 +2,7 @@ package com.deokhugam.notifications.controller;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.deokhugam.notifications.service.NotificationService;
@@ -48,6 +49,22 @@ class NotificationControllerTest {
 
     // 헤더가 없으면 Service까지 도달하면 안 됨! (never)
     verify(notificationService, never()).readAllNotification(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  @DisplayName("사용자의 알림 목록을 커서 기반으로 조회하면 200 OK를 반환한다")
+  void getNotifications_Success() throws Exception {
+    // given
+    UUID userId = UUID.randomUUID();
+    String cursor = "2026-08-25T10:00:00"; // 기준이 되는 마지막 알림의 시간
+    int size = 10; // 한 번에 가져올 개수
+    // when & then
+    // GET /api/notifications?cursor=...&size=10
+    mockMvc.perform(get("/api/notifications")
+            .header("Deokhugam-Request-User-ID", userId.toString())
+            .param("cursor", cursor)
+            .param("size", String.valueOf(size)))
+        .andExpect(status().isOk());
   }
 
 }
