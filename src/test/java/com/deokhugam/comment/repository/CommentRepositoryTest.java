@@ -6,6 +6,7 @@ import com.deokhugam.comment.dto.request.CommentSearchRequest;
 import com.deokhugam.comment.entity.Comment;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -706,5 +707,145 @@ class CommentRepositoryTest {
         assertThat(
                 commentRepository.findById(otherReviewCommentId)
         ).isPresent();
+    }
+
+    @Test
+    @DisplayName("복합 커서 페이지네이션은 페이지 이동 시 댓글의 중복과 누락이 없다")
+    void compositeCursorPaginationHasNoDuplicatesOrMissingComments() {
+
+        // given
+        UUID userId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+
+        for (int i = 1; i <= 5; i++) {
+            commentRepository.save(
+                    new Comment(
+                            "댓글 " + i,
+                            userId,
+                            reviewId
+                    )
+            );
+        }
+
+        commentRepository.flush();
+        entityManager.clear();
+
+        /*
+         * 첫 페이지:
+         * limit = 2
+         *
+         * Repository는 hasNext 판단을 위해
+         * limit + 1 = 3개를 반환한다.
+         */
+        CommentSearchRequest firstRequest =
+                new CommentSearchRequest(
+                        reviewId,
+                        "DESC",
+                        null,
+                        null,
+                        2
+                );
+
+        List<Comment> firstResult =
+                commentRepository.findAllByCursor(firstRequest);
+
+        assertThat(firstResult).hasSize(3);
+
+        // 실제 응답에 포함될 앞의 2개만 사용
+        List<Comment> firstPage =
+                firstResult.subList(0, 2);
+
+        Comment firstPageLastComment =
+                firstPage.get(firstPage.size() - 1);
+
+        /*
+         * 두 번째 페이지:
+         *
+         * cursor = 이전 페이지 마지막 댓글 ID
+         * after  = 이전 페이지 마지막 댓글 createdAt
+         */
+        CommentSearchRequest secondRequest =
+                new CommentSearchRequest(
+                        reviewId,
+                        "DESC",
+                        firstPageLastComment.getId().toString(),
+                        firstPageLastComment.getCreatedAt(),
+                        2
+                );
+
+        List<Comment> secondResult =
+                commentRepository.findAllByCursor(secondRequest);
+
+        assertThat(secondResult).hasSize(3);
+
+        List<Comment> secondPage =
+                secondResult.subList(0, 2);
+
+        Comment secondPageLastComment =
+                secondPage.get(secondPage.size() - 1);
+
+        /*
+         * 세 번째 페이지
+         */
+        CommentSearchRequest thirdRequest =
+                new CommentSearchRequest(
+                        reviewId,
+                        "DESC",
+                        secondPageLastComment.getId().toString(),
+                        secondPageLastComment.getCreatedAt(),
+                        2
+                );
+
+        List<Comment> thirdPage =
+                commentRepository.findAllByCursor(thirdRequest);
+
+        assertThat(thirdPage).hasSize(1);
+
+        /*
+         * 세 페이지에서 조회된 댓글 ID를 하나로 합친다.
+         */
+        List<UUID> allIds = new ArrayList<>();
+
+        firstPage.stream()
+                .map(Comment::getId)
+                .forEach(allIds::add);
+
+        secondPage.stream()
+                .map(Comment::getId)
+                .forEach(allIds::add);
+
+        thirdPage.stream()
+                .map(Comment::getId)
+                .forEach(allIds::add);
+
+        // 총 5개가 조회되어야 한다.
+        assertThat(allIds).hasSize(5);
+
+        // 중복 ID가 없어야 한다.
+        assertThat(allIds)
+                .doesNotHaveDuplicates();
+
+        /*
+         * DB에 저장된 해당 리뷰 댓글 5개가
+         * 페이지를 이동해도 하나도 빠지지 않았는지 확인한다.
+         */
+        CommentSearchRequest allRequest =
+                new CommentSearchRequest(
+                        reviewId,
+                        "DESC",
+                        null,
+                        null,
+                        10
+                );
+
+        List<UUID> expectedIds =
+                commentRepository
+                        .findAllByCursor(allRequest)
+                        .stream()
+                        .map(Comment::getId)
+                        .toList();
+
+        assertThat(allIds)
+                .containsExactlyElementsOf(expectedIds);
     }
 }
