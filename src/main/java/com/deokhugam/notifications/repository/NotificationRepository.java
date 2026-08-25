@@ -3,10 +3,14 @@ package com.deokhugam.notifications.repository;
 import com.deokhugam.notifications.entity.Notification;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-  // 도서 물리 삭제 시 연관 알림 일괄 삭제
-  void deleteAllByReviewId(UUID reviewId);
+  @Modifying
+  @Query("delete from Notification n where n.review.id = :reviewId")
+  void deleteAllByReviewId(@Param("reviewId") UUID reviewId);
 
 }
