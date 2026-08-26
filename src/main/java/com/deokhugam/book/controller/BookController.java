@@ -1,5 +1,6 @@
 package com.deokhugam.book.controller;
 
+import com.deokhugam.book.controller.doc.BookControllerDoc;
 import com.deokhugam.book.dto.request.BookCreateRequest;
 import com.deokhugam.book.dto.request.BookSearchRequest;
 import com.deokhugam.book.dto.request.BookUpdateRequest;
@@ -29,7 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/books")
 @RequiredArgsConstructor
-public class BookController {
+public class BookController implements BookControllerDoc {
 
   private final BookService bookService;
 
