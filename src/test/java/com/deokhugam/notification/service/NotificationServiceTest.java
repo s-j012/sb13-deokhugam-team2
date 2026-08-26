@@ -9,11 +9,14 @@ import static org.mockito.Mockito.mock;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.notification.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notification.dto.response.NotificationDto;
+import com.deokhugam.notification.dto.response.NotificationListResponse;
 import com.deokhugam.notification.entity.Notification;
 import com.deokhugam.notification.entity.NotificationType;
 import com.deokhugam.notification.repository.NotificationRepository;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.user.entity.User;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -154,5 +158,45 @@ class NotificationServiceTest {
     // then
     assertThat(result.message()).isEqualTo("OOO님이 좋아요를 눌렀습니다.");
     assertThat(result.confirmed()).isFalse();
+  }
+
+  @Test
+  @DisplayName("전체 알림 읽음 처리 시 안 읽은 알림들이 모두 읽음 상태로 변경된다")
+  void readAllNotification_Success() {
+    // given
+    UUID userId = UUID.randomUUID();
+    Notification noti1 = createMockNotification(userId, UUID.randomUUID());
+    Notification noti2 = createMockNotification(userId, UUID.randomUUID());
+
+    // Repository가 안 읽은 알림 2개를 반환한다고 가짜 설정
+    given(notificationRepository.findAllByUserIdAndIsConfirmedFalse(userId))
+        .willReturn(List.of(noti1, noti2));
+    // when
+    notificationService.readAllNotification(userId);
+    // then
+    assertThat(noti1.isConfirmed()).isTrue();
+    assertThat(noti2.isConfirmed()).isTrue();
+  }
+  @Test
+  @DisplayName("알림 목록 조회 시 다음 커서 정보와 함께 알림 목록이 반환된다")
+  void getNotifications_Success() {
+    // given
+    UUID userId = UUID.randomUUID();
+    Notification noti1 = createMockNotification(userId, UUID.randomUUID());
+    Notification noti2 = createMockNotification(userId, UUID.randomUUID());
+
+    // 테스트용 생성 시간(CreatedAt)을 강제로 세팅 (BaseEntity라 setter가 없으므로 Reflection 사용)
+    ReflectionTestUtils.setField(noti1, "createdAt", LocalDateTime.now().minusHours(1));
+    ReflectionTestUtils.setField(noti2, "createdAt", LocalDateTime.now());
+
+    // Repository가 limit+1 개인 2개를 조회했다고 가짜 설정
+    given(notificationRepository.findAllByCursor(any(), any(), any()))
+        .willReturn(List.of(noti2, noti1)); // 최신순(noti2가 먼저) 정렬
+    // when (limit을 1로 요청 -> 2개가 조회됐으니 hasNext는 true여야 함!)
+    NotificationListResponse result = notificationService.getNotifications(userId, "DESC", null, null, 1);
+    // then
+    assertThat(result.hasNext()).isTrue();
+    assertThat(result.content()).hasSize(1);
+    assertThat(result.nextCursor()).isNotNull();
   }
 }

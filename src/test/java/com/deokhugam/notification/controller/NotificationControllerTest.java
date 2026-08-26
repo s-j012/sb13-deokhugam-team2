@@ -32,7 +32,7 @@ class NotificationControllerTest {
     UUID userId = UUID.randomUUID();
 
     // when & then
-    mockMvc.perform(patch("/api/notifications") // Swagger 주소로 맞춤 (다르면 수정 요망)
+    mockMvc.perform(patch("/api/notifications/read-all") // Swagger 주소로 맞춤 (다르면 수정 요망)
             .header("Deokhugam-Request-User-ID", userId.toString()))
         .andExpect(status().isOk());
 
@@ -44,7 +44,7 @@ class NotificationControllerTest {
   @DisplayName("요청자 ID 헤더가 없으면 400 Bad Request를 반환한다")
   void readAllNotification_WithoutUserIdHeader_BadRequest() throws Exception {
     // when & then (헤더 없이 요청)
-    mockMvc.perform(patch("/api/notifications"))
+    mockMvc.perform(patch("/api/notifications/read-all"))
         .andExpect(status().isBadRequest());
 
     // 헤더가 없으면 Service까지 도달하면 안 됨! (never)
@@ -56,14 +56,14 @@ class NotificationControllerTest {
   void getNotifications_Success() throws Exception {
     // given
     UUID userId = UUID.randomUUID();
-    String cursor = "2026-08-25T10:00:00"; // 기준이 되는 마지막 알림의 시간
-    int size = 10; // 한 번에 가져올 개수
+    String after = "2026-08-25T10:00:00"; // 기준이 되는 마지막 알림의 시간
+    int limit = 10; // 한 번에 가져올 개수
     // when & then
     // GET /api/notification?cursor=...&size=10
     mockMvc.perform(get("/api/notifications")
             .header("Deokhugam-Request-User-ID", userId.toString())
-            .param("cursor", cursor)
-            .param("size", String.valueOf(size)))
+            .param("after", after)
+            .param("limit", String.valueOf(limit)))
         .andExpect(status().isOk());
   }
 
