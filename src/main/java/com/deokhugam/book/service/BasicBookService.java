@@ -19,7 +19,14 @@ import com.deokhugam.book.external.ocr.OcrSpaceClient;
 import com.deokhugam.book.external.ocr.OcrSpaceResponse;
 import com.deokhugam.book.mapper.BookMapper;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.comment.repository.CommentRepository;
+import com.deokhugam.dashboard.repository.BookRankingRepository;
+import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.storage.Storage;
+import com.deokhugam.notifications.repository.NotificationRepository;
+import com.deokhugam.review.entity.Review;
+import com.deokhugam.review.repository.ReviewLikeRepository;
+import com.deokhugam.review.repository.ReviewRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +51,13 @@ public class BasicBookService implements BookService {
   private final GoogleBookClient googleBookClient;
   private final OcrSpaceClient ocrSpaceClient;
 
+  private final ReviewRepository reviewRepository;
+  private final ReviewLikeRepository reviewLikeRepository;
+  private final CommentRepository commentRepository;
+  private final NotificationRepository notificationRepository;
+  private final ReviewRankingRepository reviewRankingRepository;
+  private final BookRankingRepository bookRankingRepository;
+
   private static final Pattern ISBN_13_PATTERN =
       Pattern.compile("(?:978|979)(?:[-\\s]?\\d){10}");
 
@@ -51,7 +65,9 @@ public class BasicBookService implements BookService {
   @Transactional
   public BookDto create(BookCreateRequest request, MultipartFile thumbnailImage) {
 
-    if (bookRepository.existsByIsbn(request.isbn())) {
+    if (request.isbn() != null
+        && !request.isbn().isBlank()
+        && bookRepository.existsByIsbn(request.isbn())) {
       throw new DuplicateBookException(request.isbn());
     }
 
@@ -175,6 +191,37 @@ public class BasicBookService implements BookService {
         Math.toIntExact(reviewCount),
         rating
     );
+  }
+
+  @Override
+  @Transactional
+  public void hardDelete(UUID bookId) {
+
+    Book book = bookRepository.findById(bookId)
+        .orElseThrow(() -> new BookNotFoundException(bookId));
+
+    List<Review> reviews = reviewRepository.findAllByBookId(bookId);
+
+    for (Review review : reviews) {
+      UUID reviewId = review.getId();
+
+      reviewLikeRepository.deleteAllByReviewId(reviewId);
+      notificationRepository.deleteAllByReviewId(reviewId);
+      commentRepository.deleteAllByReviewId(reviewId);
+      reviewRankingRepository.deleteAllByReviewId(reviewId);
+    }
+
+    reviewRepository.deleteAll(reviews);
+
+    bookRankingRepository.deleteAllByBookId(bookId);
+
+    String thumbnailPath = book.getThumbnailUrl();
+
+    if (thumbnailPath != null && !thumbnailPath.isBlank()) {
+      storage.delete(thumbnailPath);
+    }
+
+    bookRepository.delete(book);
   }
 
   @Override

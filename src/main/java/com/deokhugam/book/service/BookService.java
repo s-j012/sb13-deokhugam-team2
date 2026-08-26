@@ -21,6 +21,8 @@ public interface BookService {
 
   void delete(UUID bookId);
 
+  void hardDelete(UUID bookId);
+
   BookInfoResponse findBookInfoByIsbn(String isbn);
 
   String extractIsbnFromImage(MultipartFile image);

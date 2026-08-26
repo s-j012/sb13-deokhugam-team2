@@ -1,7 +1,8 @@
 package com.deokhugam.user.controller.doc;
 
-import com.deokhugam.user.entity.Period;
-import com.deokhugam.user.dto.response.CursorPageResponsePowerUserDto;
+import com.deokhugam.book.dto.response.CursorPageResponse;
+import com.deokhugam.dashboard.dto.response.PowerUserDto;
+import com.deokhugam.dashboard.entity.PeriodType;
 import com.deokhugam.user.dto.request.UserRegisterRequest;
 import com.deokhugam.user.dto.request.UserLoginRequest;
 import com.deokhugam.user.dto.request.UserUpdateRequest;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -74,11 +76,11 @@ public interface UserControllerDoc {
 
     @Operation(summary = "파워 유저 목록 조회", description = "기간별 파워 유저 목록을 조회합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "파워 유저 목록 조회 성공")
+            @ApiResponse(responseCode = "200", description = "조회 성공")
     })
-    ResponseEntity<CursorPageResponsePowerUserDto> getPowerUsers(
-            @RequestParam(defaultValue = "DAILY") Period period,
-            @RequestParam(defaultValue = "ASC") String direction,
+    ResponseEntity<CursorPageResponse<PowerUserDto>> getPowerUsers(
+            @RequestParam(defaultValue = "DAILY") PeriodType period,
+            @RequestParam(defaultValue = "ASC") Sort.Direction direction,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
             @RequestParam(defaultValue = "50") int limit

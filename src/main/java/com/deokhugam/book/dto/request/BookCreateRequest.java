@@ -25,7 +25,6 @@ public record BookCreateRequest(
     @NotNull(message = "출판일은 필수입니다.")
     LocalDate publishedDate,
 
-    @NotBlank(message = "ISBN은 필수입니다.")
     @Pattern(
         regexp = "^(?:\\d{9}[\\dXx]|\\d{13})$",
         message = "ISBN은 10자리 또는 13자리 형식이어야 합니다."

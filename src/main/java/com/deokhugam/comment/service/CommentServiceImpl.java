@@ -9,6 +9,8 @@ import com.deokhugam.comment.entity.Comment;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
+import com.deokhugam.review.exception.ReviewNotFoundException;
+import com.deokhugam.review.repository.ReviewRepository;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -25,12 +27,15 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
 
     @Override
     @Transactional
     public CommentResponse create(
             CommentCreateRequest request
     ) {
+        validateActiveReview(request.reviewId());
+
         Comment comment = new Comment(
                 request.content(),
                 request.userId(),
@@ -109,10 +114,6 @@ public class CommentServiceImpl implements CommentService {
             Comment lastComment =
                     comments.get(comments.size() - 1);
 
-            /*
-             * cursor = 마지막 댓글 ID
-             * after  = 마지막 댓글 생성 시간
-             */
             nextCursor =
                     lastComment.getId().toString();
 
@@ -154,6 +155,18 @@ public class CommentServiceImpl implements CommentService {
                     ErrorCode.COMMENT_ACCESS_DENIED
             );
         }
+    }
+
+    private void validateActiveReview(
+            UUID reviewId
+    ) {
+        reviewRepository
+                .findByIdAndDeletedAtIsNull(reviewId)
+                .orElseThrow(
+                        () -> new ReviewNotFoundException(
+                                reviewId
+                        )
+                );
     }
 
     private CommentResponse toResponse(

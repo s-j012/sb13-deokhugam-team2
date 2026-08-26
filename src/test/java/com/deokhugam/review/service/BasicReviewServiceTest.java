@@ -5,13 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.comment.repository.CommentRepository;
+import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.storage.Storage;
+import com.deokhugam.notifications.repository.NotificationRepository;
 import com.deokhugam.review.dto.request.ReviewCreateRequest;
 import com.deokhugam.review.dto.request.ReviewSearchRequest;
 import com.deokhugam.review.dto.request.ReviewUpdateRequest;
@@ -36,6 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,6 +52,15 @@ class BasicReviewServiceTest {
 
     @Mock
     private ReviewLikeRepository reviewLikeRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
+    private ReviewRankingRepository reviewRankingRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -845,6 +857,110 @@ class BasicReviewServiceTest {
                         any(UUID.class),
                         anyCollection()
                 );
+    }
+
+    @Test
+    void 작성자가_리뷰를_물리_삭제하면_관련_데이터도_삭제한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        User user = createUser(userId);
+        Book book = createBook(bookId);
+        Review review = createReview(
+                reviewId,
+                user,
+                book
+        );
+
+        review.softDelete();
+
+        given(reviewRepository.findById(reviewId))
+                .willReturn(Optional.of(review));
+
+        reviewService.hardDelete(
+                reviewId,
+                userId
+        );
+
+        InOrder deletionOrder = inOrder(
+                commentRepository,
+                notificationRepository,
+                reviewLikeRepository,
+                reviewRankingRepository,
+                reviewRepository
+        );
+
+        deletionOrder.verify(commentRepository)
+                .deleteAllByReviewId(reviewId);
+        deletionOrder.verify(notificationRepository)
+                .deleteAllByReviewId(reviewId);
+        deletionOrder.verify(reviewLikeRepository)
+                .deleteAllByReviewId(reviewId);
+        deletionOrder.verify(reviewRankingRepository)
+                .deleteAllByReviewId(reviewId);
+        deletionOrder.verify(reviewRepository)
+                .delete(review);
+    }
+
+    @Test
+    void 리뷰가_존재하지_않으면_물리_삭제에_실패한다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+
+        given(reviewRepository.findById(reviewId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reviewService.hardDelete(
+                reviewId,
+                requesterId
+        )).isInstanceOf(ReviewNotFoundException.class);
+
+        verify(commentRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(notificationRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(reviewLikeRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(reviewRankingRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(reviewRepository, never())
+                .delete(any(Review.class));
+    }
+
+    @Test
+    void 다른_사용자의_리뷰는_물리_삭제할_수_없다() {
+        UUID reviewId = UUID.randomUUID();
+        UUID authorId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        User author = createUser(authorId);
+        Book book = createBook(bookId);
+        Review review = createReview(
+                reviewId,
+                author,
+                book
+        );
+
+        given(reviewRepository.findById(reviewId))
+                .willReturn(Optional.of(review));
+
+        assertThatThrownBy(() -> reviewService.hardDelete(
+                reviewId,
+                requesterId
+        )).isInstanceOf(ReviewAccessDeniedException.class);
+
+        verify(commentRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(notificationRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(reviewLikeRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(reviewRankingRepository, never())
+                .deleteAllByReviewId(any(UUID.class));
+        verify(reviewRepository, never())
+                .delete(any(Review.class));
     }
 
     private Review createReview(

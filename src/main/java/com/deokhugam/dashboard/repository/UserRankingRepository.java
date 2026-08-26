@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -57,6 +58,17 @@ public interface UserRankingRepository extends JpaRepository<UserRanking, UUID> 
       @Param("cursorRanking") Long cursorRanking,
       @Param("after") LocalDateTime after,
       Pageable pageable
+  );
+
+  @Modifying
+  @Query("""
+      DELETE FROM UserRanking ur
+      WHERE ur.periodType = :periodType
+        AND ur.baseDate = :baseDate
+      """)
+  void deleteSnapshot(
+      @Param("periodType") PeriodType periodType,
+      @Param("baseDate") LocalDate baseDate
   );
 
   void deleteAllByUserId(UUID userId);

@@ -20,13 +20,25 @@ public class Book extends SoftDeleteEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
+
+  @Column(nullable = false, length = 150)
   private String title;
+
+  @Column(nullable = false, length = 50)
   private String author;
+
   @Column(length = 1000)
   private String description;
+
+  @Column(nullable = false, length = 50)
   private String publisher;
+
+  @Column(nullable = false)
   private LocalDate publishedDate;
+
+  @Column(unique = true, length = 13)
   private String isbn;
+
   private String thumbnailUrl;
 
   public Book(

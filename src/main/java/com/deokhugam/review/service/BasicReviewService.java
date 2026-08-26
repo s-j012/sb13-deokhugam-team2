@@ -3,8 +3,11 @@ package com.deokhugam.review.service;
 import com.deokhugam.book.entity.Book;
 import com.deokhugam.book.exception.BookNotFoundException;
 import com.deokhugam.book.repository.BookRepository;
+import com.deokhugam.comment.repository.CommentRepository;
+import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.exception.ErrorCode;
 import com.deokhugam.global.storage.Storage;
+import com.deokhugam.notifications.repository.NotificationRepository;
 import com.deokhugam.review.dto.request.ReviewCreateRequest;
 import com.deokhugam.review.dto.request.ReviewSearchRequest;
 import com.deokhugam.review.dto.request.ReviewUpdateRequest;
@@ -40,6 +43,9 @@ public class BasicReviewService implements ReviewService {
     private final ReviewLikeRepository reviewLikeRepository;
     private final UserRepository userRepository;
     private final BookRepository bookRepository;
+    private final CommentRepository commentRepository;
+    private final NotificationRepository notificationRepository;
+    private final ReviewRankingRepository reviewRankingRepository;
     private final Storage storage;
 
     @Override
@@ -198,6 +204,26 @@ public class BasicReviewService implements ReviewService {
         validateReviewOwner(review, requesterId);
 
         review.softDelete();
+    }
+
+    @Override
+    @Transactional
+    public void hardDelete(
+            UUID reviewId,
+            UUID requesterId
+    ) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() ->
+                        new ReviewNotFoundException(reviewId)
+                );
+
+        validateReviewOwner(review, requesterId);
+
+        commentRepository.deleteAllByReviewId(reviewId);
+        notificationRepository.deleteAllByReviewId(reviewId);
+        reviewLikeRepository.deleteAllByReviewId(reviewId);
+        reviewRankingRepository.deleteAllByReviewId(reviewId);
+        reviewRepository.delete(review);
     }
 
     private void validateDuplicateReview(
