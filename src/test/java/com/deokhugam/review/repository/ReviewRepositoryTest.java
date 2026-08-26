@@ -11,7 +11,6 @@ import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -176,7 +175,7 @@ class ReviewRepositoryTest {
                 "테스트 설명",
                 "테스트 출판사",
                 LocalDate.of(2026, 8, 19),
-                UUID.randomUUID().toString()
+                null
         );
     }
 }

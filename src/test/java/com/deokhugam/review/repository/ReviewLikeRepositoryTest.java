@@ -146,7 +146,7 @@ class ReviewLikeRepositoryTest {
                         "테스트 설명",
                         "테스트 출판사",
                         LocalDate.of(2026, 8, 21),
-                        UUID.randomUUID().toString()
+                        null
                 )
         );
 
@@ -157,7 +157,7 @@ class ReviewLikeRepositoryTest {
                         "테스트 설명",
                         "테스트 출판사",
                         LocalDate.of(2026, 8, 21),
-                        UUID.randomUUID().toString()
+                        null
                 )
         );
 
@@ -283,7 +283,7 @@ class ReviewLikeRepositoryTest {
                 "테스트 설명",
                 "테스트 출판사",
                 LocalDate.of(2026, 8, 20),
-                UUID.randomUUID().toString()
+                null
         );
     }
 }
