@@ -203,7 +203,7 @@ class ReviewRankingAggregationRepositoryTest {
         "테스트 설명",
         "테스트 출판사",
         LocalDate.of(2026, 8, 24),
-        UUID.randomUUID().toString()
+        null
     );
   }
 }

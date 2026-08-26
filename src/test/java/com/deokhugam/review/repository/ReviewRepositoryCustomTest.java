@@ -9,12 +9,11 @@ import com.deokhugam.review.dto.request.ReviewSearchRequest;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -318,7 +317,7 @@ class ReviewRepositoryCustomTest {
                         "테스트 설명",
                         "테스트 출판사",
                         LocalDate.of(2026, 8, 21),
-                        UUID.randomUUID().toString()
+                        null
                 )
         );
     }
