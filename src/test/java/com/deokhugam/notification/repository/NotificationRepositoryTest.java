@@ -1,10 +1,10 @@
-package com.deokhugam.notifications.repository;
+package com.deokhugam.notification.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.deokhugam.book.entity.Book;
-import com.deokhugam.notifications.entity.Notification;
-import com.deokhugam.notifications.entity.NotificationType;
+import com.deokhugam.notification.entity.Notification;
+import com.deokhugam.notification.entity.NotificationType;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.global.config.JpaConfig;

@@ -1,4 +1,4 @@
-package com.deokhugam.notifications.entity;
+package com.deokhugam.notification.entity;
 
 import com.deokhugam.global.entity.BaseEntity;
 import com.deokhugam.review.entity.Review;
@@ -22,7 +22,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notification")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseEntity {

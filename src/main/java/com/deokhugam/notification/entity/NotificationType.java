@@ -1,4 +1,4 @@
-package com.deokhugam.notifications.entity;
+package com.deokhugam.notification.entity;
 
 public enum NotificationType {
     REVIEW_LIKE,

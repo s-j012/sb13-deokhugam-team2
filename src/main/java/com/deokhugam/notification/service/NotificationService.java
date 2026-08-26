@@ -1,12 +1,12 @@
-package com.deokhugam.notifications.service;
+package com.deokhugam.notification.service;
 
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
-import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
-import com.deokhugam.notifications.dto.response.NotificationDto;
-import com.deokhugam.notifications.entity.Notification;
-import com.deokhugam.notifications.entity.NotificationType;
-import com.deokhugam.notifications.repository.NotificationRepository;
+import com.deokhugam.notification.dto.request.NotificationUpdateRequest;
+import com.deokhugam.notification.dto.response.NotificationDto;
+import com.deokhugam.notification.entity.Notification;
+import com.deokhugam.notification.entity.NotificationType;
+import com.deokhugam.notification.repository.NotificationRepository;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.user.entity.User;
 import java.time.LocalDateTime;

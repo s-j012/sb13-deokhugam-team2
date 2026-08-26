@@ -1,8 +1,8 @@
-package com.deokhugam.notifications.controller;
+package com.deokhugam.notification.controller;
 
-import com.deokhugam.notifications.dto.request.NotificationUpdateRequest;
-import com.deokhugam.notifications.dto.response.NotificationDto;
-import com.deokhugam.notifications.service.NotificationService;
+import com.deokhugam.notification.dto.request.NotificationUpdateRequest;
+import com.deokhugam.notification.dto.response.NotificationDto;
+import com.deokhugam.notification.service.NotificationService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;

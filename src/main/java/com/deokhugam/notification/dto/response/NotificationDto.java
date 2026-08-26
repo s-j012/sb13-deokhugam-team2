@@ -1,6 +1,6 @@
-package com.deokhugam.notifications.dto.response;
+package com.deokhugam.notification.dto.response;
 
-import com.deokhugam.notifications.entity.NotificationType;
+import com.deokhugam.notification.entity.NotificationType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 

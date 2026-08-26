@@ -1,6 +1,6 @@
-package com.deokhugam.notifications.repository;
+package com.deokhugam.notification.repository;
 
-import com.deokhugam.notifications.entity.Notification;
+import com.deokhugam.notification.entity.Notification;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
