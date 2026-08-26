@@ -65,15 +65,29 @@ public class NotificationService {
     // 1. 다음 페이지가 있는지 확인하기 위해 일부러 limit보다 1개 더(+1) 많이 가져옵니다.
     PageRequest pageRequest = PageRequest.of(0, limit + 1);
 
-    // cursor 파라미터가 비어있으면 null로 처리, 아니면 after(시간) 사용
-    LocalDateTime targetCursor = (after != null) ? after : null;
+    // 2. 커서 처리: after가 있으면 최우선 적용, 없으면 문자열 cursor를 변환
+    LocalDateTime targetCursor = null;
+    if (after != null) {
+      targetCursor = after;
+    } else if (cursor != null && !cursor.isBlank()) {
+      targetCursor = LocalDateTime.parse(cursor);
+    }
 
-    List<Notification> searched = notificationRepository.findAllByCursor(userId, targetCursor, pageRequest);
-    // 2. limit보다 1개 더 많이 조회되었다면, 다음 페이지가 있다는 뜻!
+    // 3. 정렬 방향(direction)에 따라 다른 쿼리 호출
+    List<Notification> searched;
+    if ("ASC".equalsIgnoreCase(direction)) {
+      searched = notificationRepository.findAllByCursorAsc(userId, targetCursor, pageRequest);
+    } else {
+      searched = notificationRepository.findAllByCursorDesc(userId, targetCursor, pageRequest);
+    }
+
+    // 4. limit보다 1개 더 많이 조회되었다면, 다음 페이지가 있다는 뜻!
     boolean hasNext = searched.size() > limit;
-    // 3. 진짜 프론트엔드에 줄 데이터(limit 개수만큼만 자름)
+
+    // 5. 진짜 프론트엔드에 줄 데이터(limit 개수만큼만 자름)
     List<Notification> notifications = hasNext ? searched.subList(0, limit) : searched;
-    // 4. Entity -> DTO 변환
+
+    // 6. Entity -> DTO 변환
     List<NotificationDto> content = notifications.stream()
         .map(notification -> new NotificationDto(
             notification.getId(), notification.getUser().getId(),
@@ -82,16 +96,19 @@ public class NotificationService {
             notification.getConfirmedAt(), notification.getCreatedAt(),
             notification.getUpdatedAt(), notification.getType()
         )).toList();
-    // 5. 다음 페이지 요청을 위한 커서값 세팅
+
+    // 7. 다음 페이지 요청을 위한 커서값 세팅
     String nextCursor = null;
     LocalDateTime nextAfter = null;
     if (hasNext && !notifications.isEmpty()) {
       Notification lastItem = notifications.get(notifications.size() - 1);
-      nextCursor = lastItem.getCreatedAt().toString();
+      nextCursor = lastItem.getCreatedAt() != null ? lastItem.getCreatedAt().toString() : null;
       nextAfter = lastItem.getCreatedAt();
     }
-    // 6. 총 개수 (추후 최적화 가능하지만 일단 DB 카운트 사용)
-    long totalElements = notificationRepository.count();
+
+    // 8. 총 개수 (추후 최적화 가능하지만 일단 DB 카운트 사용)
+    long totalElements = notificationRepository.countByUserId(userId);
+
     return new NotificationListResponse(
         content, nextCursor, nextAfter, content.size(), totalElements, hasNext
     );

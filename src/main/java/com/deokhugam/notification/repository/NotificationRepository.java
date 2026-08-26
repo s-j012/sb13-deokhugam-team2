@@ -19,11 +19,22 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
   //user의 안읽은(isConfirmed=false) 알림만 모두 가져오는 퀴리 메서드
   List<Notification> findAllByUserIdAndIsConfirmedFalse(UUID userId);
 
-  // 커서(시간) 기준 다음 페이지 목록 조회 (최신순 정렬)
+  // 1. 내 알림만 카운트하는 메서드 (리뷰 피드백 반영)
+  long countByUserId(UUID userId);
+  // 2. 내림차순 정렬 (최신순) - 과거 시간(<) 탐색
   @Query("select n from Notification n where n.user.id = :userId " +
       "and (:cursor is null or n.createdAt < :cursor) " +
       "order by n.createdAt desc")
-  List<Notification> findAllByCursor(
+  List<Notification> findAllByCursorDesc(
+      @Param("userId") UUID userId,
+      @Param("cursor") LocalDateTime cursor,
+      Pageable pageable
+  );
+  // 3. 오름차순 정렬 (오래된순) - 미래 시간(>) 탐색
+  @Query("select n from Notification n where n.user.id = :userId " +
+      "and (:cursor is null or n.createdAt > :cursor) " +
+      "order by n.createdAt asc")
+  List<Notification> findAllByCursorAsc(
       @Param("userId") UUID userId,
       @Param("cursor") LocalDateTime cursor,
       Pageable pageable
