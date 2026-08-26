@@ -13,7 +13,7 @@ import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.storage.Storage;
-import com.deokhugam.notifications.repository.NotificationRepository;
+import com.deokhugam.notification.repository.NotificationRepository;
 import com.deokhugam.review.dto.request.ReviewCreateRequest;
 import com.deokhugam.review.dto.request.ReviewSearchRequest;
 import com.deokhugam.review.dto.request.ReviewUpdateRequest;
