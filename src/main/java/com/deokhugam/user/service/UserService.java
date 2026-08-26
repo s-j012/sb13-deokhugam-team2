@@ -1,13 +1,10 @@
 package com.deokhugam.user.service;
 
 import com.deokhugam.global.exception.ErrorCode;
-import com.deokhugam.user.entity.Period;
 import com.deokhugam.user.entity.User;
-import com.deokhugam.user.dto.response.CursorPageResponsePowerUserDto;
 import com.deokhugam.user.dto.request.UserRegisterRequest;
 import com.deokhugam.user.dto.request.UserLoginRequest;
 import com.deokhugam.user.dto.request.UserUpdateRequest;
-import com.deokhugam.user.dto.response.PowerUserDto;
 import com.deokhugam.user.dto.response.UserDto;
 import com.deokhugam.user.exception.*;
 import com.deokhugam.user.repository.UserRepository;
@@ -87,29 +84,6 @@ public class UserService {
             throw new UserException(ErrorCode.USER_NOT_FOUND, Map.of("userId", userId));
         }
         userRepository.deleteById(userId);
-    }
-
-    public CursorPageResponsePowerUserDto getPowerUsers(Period period, String direction, String cursor, LocalDateTime after, int limit) {
-        Slice<PowerUserDto> slice = userRepository.findPowerUsers(period, direction, cursor, after, limit);
-
-        List<PowerUserDto> content = slice.getContent();
-        String nextCursor = null;
-        LocalDateTime nextAfter = null;
-
-        if (!content.isEmpty()) {
-            PowerUserDto last = content.get(content.size() - 1);
-            nextCursor = last.userId().toString();
-            nextAfter = last.createdAt();
-        }
-
-        return new CursorPageResponsePowerUserDto(
-                content,
-                nextCursor,
-                nextAfter,
-                content.size(),
-                userRepository.count(),
-                slice.hasNext()
-        );
     }
 
     /**

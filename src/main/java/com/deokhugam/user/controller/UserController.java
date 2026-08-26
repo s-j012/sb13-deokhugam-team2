@@ -1,8 +1,10 @@
 package com.deokhugam.user.controller;
 
+import com.deokhugam.book.dto.response.CursorPageResponse;
+import com.deokhugam.dashboard.dto.response.PowerUserDto;
+import com.deokhugam.dashboard.entity.PeriodType;
+import com.deokhugam.dashboard.service.DashboardQueryService;
 import com.deokhugam.user.controller.doc.UserControllerDoc;
-import com.deokhugam.user.entity.Period;
-import com.deokhugam.user.dto.response.CursorPageResponsePowerUserDto;
 import com.deokhugam.user.dto.request.UserRegisterRequest;
 import com.deokhugam.user.dto.request.UserLoginRequest;
 import com.deokhugam.user.dto.request.UserUpdateRequest;
@@ -10,6 +12,7 @@ import com.deokhugam.user.dto.response.UserDto;
 import com.deokhugam.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +27,7 @@ import java.util.UUID;
 public class UserController implements UserControllerDoc {
 
     private final UserService userService;
-
+    private final DashboardQueryService dashboardQueryService;
     @Override
     @PostMapping
     public ResponseEntity<UserDto> register(@Valid @RequestBody UserRegisterRequest request) {
@@ -69,12 +72,12 @@ public class UserController implements UserControllerDoc {
 
     @Override
     @GetMapping("/power")
-    public ResponseEntity<CursorPageResponsePowerUserDto> getPowerUsers(
-            @RequestParam(defaultValue = "DAILY") Period period,
-            @RequestParam(defaultValue = "ASC") String direction,
+    public ResponseEntity<CursorPageResponse<PowerUserDto>> getPowerUsers(
+            @RequestParam(defaultValue = "DAILY") PeriodType period,
+            @RequestParam(defaultValue = "ASC") Sort.Direction direction,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
             @RequestParam(defaultValue = "50") int limit) {
-        return ResponseEntity.ok(userService.getPowerUsers(period, direction, cursor, after, limit));
+        return ResponseEntity.ok(dashboardQueryService.getPowerUsers(period, direction, cursor, after, limit));
     }
 }
