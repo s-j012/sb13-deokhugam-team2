@@ -2,6 +2,7 @@ package com.deokhugam.notification.controller;
 
 import com.deokhugam.notification.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notification.dto.response.NotificationDto;
+import com.deokhugam.notification.dto.response.NotificationListResponse;
 import com.deokhugam.notification.service.NotificationService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,7 +35,7 @@ public class NotificationController {
     return ResponseEntity.ok(result);
   }
 
-  @PatchMapping
+  @PatchMapping("/read-all")
   public ResponseEntity<Void> readAllNotification(
       @RequestHeader ("Deokhugam-Request-User-ID") UUID userId
   ) {
@@ -44,12 +45,14 @@ public class NotificationController {
   }
 
   @GetMapping
-  public ResponseEntity<List<NotificationDto>> getNotifications(
+  public ResponseEntity<NotificationListResponse> getNotifications(
       @RequestHeader("Deokhugam-Request-User-ID") UUID userId,
-      @RequestParam(required = false) LocalDateTime cursor, // 처음 요청 시엔 null일 수 있으므로 false
-      @RequestParam(defaultValue = "10") int size // 안 보내면 기본값 10개
+      @RequestParam(required = false, defaultValue = "DESC") String direction,
+      @RequestParam(required = false) String cursor, // 처음 요청 시엔 null일 수 있으므로 false
+      @RequestParam(required = false) LocalDateTime after,
+      @RequestParam(required = false, defaultValue = "10") int limit // 안 보내면 기본값 10개
   ) {
-    List<NotificationDto> result = notificationService.getNotifications(userId, cursor, size);
+    NotificationListResponse result = notificationService.getNotifications(userId, direction, cursor, after, limit);
     return ResponseEntity.ok(result);
   }
 }

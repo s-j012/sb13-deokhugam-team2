@@ -4,6 +4,7 @@ import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
 import com.deokhugam.notification.dto.request.NotificationUpdateRequest;
 import com.deokhugam.notification.dto.response.NotificationDto;
+import com.deokhugam.notification.dto.response.NotificationListResponse;
 import com.deokhugam.notification.entity.Notification;
 import com.deokhugam.notification.entity.NotificationType;
 import com.deokhugam.notification.repository.NotificationRepository;
@@ -58,27 +59,42 @@ public class NotificationService {
     }
   }
 
-  @Transactional(readOnly = true) // 데이터 변경이 없으므로 readOnly 속도 최적화!
-  public List<NotificationDto> getNotifications(UUID userId, LocalDateTime cursor, int size) {
-    // 1. 몇 개(size)를 가져올지 세팅
-    PageRequest pageRequest = PageRequest.of(0, size);
-    // 2. Repository 호출
-    List<Notification> notifications = notificationRepository.findAllByCursor(userId, cursor, pageRequest);
-    // 3. Entity 목록을 DTO 목록으로 변환(Mapping)해서 반환
-    return notifications.stream()
+  @Transactional(readOnly = true)
+  public NotificationListResponse getNotifications(UUID userId, String direction, String cursor, LocalDateTime after, int limit) {
+
+    // 1. 다음 페이지가 있는지 확인하기 위해 일부러 limit보다 1개 더(+1) 많이 가져옵니다.
+    PageRequest pageRequest = PageRequest.of(0, limit + 1);
+
+    // cursor 파라미터가 비어있으면 null로 처리, 아니면 after(시간) 사용
+    LocalDateTime targetCursor = (after != null) ? after : null;
+
+    List<Notification> searched = notificationRepository.findAllByCursor(userId, targetCursor, pageRequest);
+    // 2. limit보다 1개 더 많이 조회되었다면, 다음 페이지가 있다는 뜻!
+    boolean hasNext = searched.size() > limit;
+    // 3. 진짜 프론트엔드에 줄 데이터(limit 개수만큼만 자름)
+    List<Notification> notifications = hasNext ? searched.subList(0, limit) : searched;
+    // 4. Entity -> DTO 변환
+    List<NotificationDto> content = notifications.stream()
         .map(notification -> new NotificationDto(
-            notification.getId(),
-            notification.getUser().getId(),
-            notification.getReview().getId(),
-            notification.getReview().getContent(),
-            notification.getContent(),
-            notification.isConfirmed(),
-            notification.getConfirmedAt(),
-            notification.getCreatedAt(),
-            notification.getUpdatedAt(),
-            notification.getType()
-        ))
-        .toList(); // 자바 16 이상 최신 문법!
+            notification.getId(), notification.getUser().getId(),
+            notification.getReview().getId(), notification.getReview().getContent(),
+            notification.getContent(), notification.isConfirmed(),
+            notification.getConfirmedAt(), notification.getCreatedAt(),
+            notification.getUpdatedAt(), notification.getType()
+        )).toList();
+    // 5. 다음 페이지 요청을 위한 커서값 세팅
+    String nextCursor = null;
+    LocalDateTime nextAfter = null;
+    if (hasNext && !notifications.isEmpty()) {
+      Notification lastItem = notifications.get(notifications.size() - 1);
+      nextCursor = lastItem.getCreatedAt().toString();
+      nextAfter = lastItem.getCreatedAt();
+    }
+    // 6. 총 개수 (추후 최적화 가능하지만 일단 DB 카운트 사용)
+    long totalElements = notificationRepository.count();
+    return new NotificationListResponse(
+        content, nextCursor, nextAfter, content.size(), totalElements, hasNext
+    );
   }
 
   @Transactional
