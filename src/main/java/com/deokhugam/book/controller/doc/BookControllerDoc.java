@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -106,6 +107,11 @@ public interface BookControllerDoc {
       @ApiResponse(responseCode = "500", description = "서버 내부 오류")
   })
   ResponseEntity<BookInfoResponse> findBookInfoByIsbn(
-      @RequestParam String isbn
+      @RequestParam
+      @Pattern(
+          regexp = "^(?:\\d{9}[\\dXx]|\\d{13})$",
+          message = "ISBN은 10자리 또는 13자리 형식이어야 합니다."
+      )
+      String isbn
   );
 }
