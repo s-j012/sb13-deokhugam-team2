@@ -23,7 +23,7 @@ import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.dashboard.repository.BookRankingRepository;
 import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.storage.Storage;
-import com.deokhugam.notifications.repository.NotificationRepository;
+import com.deokhugam.notification.repository.NotificationRepository;
 import com.deokhugam.review.entity.Review;
 import com.deokhugam.review.repository.ReviewLikeRepository;
 import com.deokhugam.review.repository.ReviewRepository;

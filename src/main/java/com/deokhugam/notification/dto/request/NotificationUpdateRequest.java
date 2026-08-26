@@ -1,4 +1,4 @@
-package com.deokhugam.notifications.dto.request;
+package com.deokhugam.notification.dto.request;
 
 public record NotificationUpdateRequest(
     boolean confirmed

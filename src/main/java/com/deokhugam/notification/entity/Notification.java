@@ -1,4 +1,4 @@
-package com.deokhugam.notifications.entity;
+package com.deokhugam.notification.entity;
 
 import com.deokhugam.global.entity.BaseEntity;
 import com.deokhugam.review.entity.Review;
