@@ -1,8 +1,10 @@
 package com.deokhugam.dashboard.batch;
 
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,5 +50,23 @@ class DashboardBatchSchedulerTest {
 
     inOrder.verify(userRankingBatchService)
         .generateAll(baseDate);
+  }
+
+  @Test
+  @DisplayName("스케줄 실행 시 서울 기준 전날 날짜로 배치를 실행한다")
+  void runDailyBatchWithPreviousDate() {
+    LocalDate expectedBaseDate =
+        LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(1);
+
+    dashboardBatchScheduler.runDailyBatch();
+
+    verify(bookRankingBatchService)
+        .generateAll(expectedBaseDate);
+
+    verify(reviewRankingBatchService)
+        .generateAll(expectedBaseDate);
+
+    verify(userRankingBatchService)
+        .generateAll(expectedBaseDate);
   }
 }
