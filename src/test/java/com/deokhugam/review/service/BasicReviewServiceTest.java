@@ -13,7 +13,9 @@ import com.deokhugam.book.repository.BookRepository;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.dashboard.repository.ReviewRankingRepository;
 import com.deokhugam.global.storage.Storage;
+import com.deokhugam.notification.entity.NotificationType;
 import com.deokhugam.notification.repository.NotificationRepository;
+import com.deokhugam.notification.service.NotificationService;
 import com.deokhugam.review.dto.request.ReviewCreateRequest;
 import com.deokhugam.review.dto.request.ReviewSearchRequest;
 import com.deokhugam.review.dto.request.ReviewUpdateRequest;
@@ -58,6 +60,9 @@ class BasicReviewServiceTest {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private ReviewRankingRepository reviewRankingRepository;
@@ -602,6 +607,12 @@ class BasicReviewServiceTest {
         assertThat(review.getLikeCount()).isEqualTo(1);
 
         verify(reviewLikeRepository).save(any(ReviewLike.class));
+        verify(notificationService).createNotification(
+                author,
+                review,
+                requester.getNickname() + "님이 좋아요를 눌렀습니다.",
+                NotificationType.REVIEW_LIKE
+        );
     }
 
     @Test
@@ -644,6 +655,7 @@ class BasicReviewServiceTest {
         assertThat(review.getLikeCount()).isZero();
 
         verify(reviewLikeRepository).delete(reviewLike);
+        verifyNoInteractions(notificationService);
     }
 
     @Test
@@ -961,6 +973,43 @@ class BasicReviewServiceTest {
                 .deleteAllByReviewId(any(UUID.class));
         verify(reviewRepository, never())
                 .delete(any(Review.class));
+    }
+
+    @Test
+    void 본인이_자기_리뷰에_좋아요를_추가하면_알림을_생성하지_않는다() {
+        UUID requesterId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+        UUID bookId = UUID.randomUUID();
+
+        User requester = createUser(requesterId);
+        Book book = createBook(bookId);
+        Review review = createReview(
+                reviewId,
+                requester,
+                book
+        );
+
+        given(reviewRepository.findByIdAndDeletedAtIsNull(reviewId))
+                .willReturn(Optional.of(review));
+
+        given(userRepository.findByIdAndDeletedAtIsNull(requesterId))
+                .willReturn(Optional.of(requester));
+
+        given(reviewLikeRepository.findByReviewIdAndUserId(
+                reviewId,
+                requesterId
+        )).willReturn(Optional.empty());
+
+        ReviewLikeResponse response = reviewService.toggleLike(
+                reviewId,
+                requesterId
+        );
+
+        assertThat(response.liked()).isTrue();
+        assertThat(review.getLikeCount()).isEqualTo(1);
+
+        verify(reviewLikeRepository).save(any(ReviewLike.class));
+        verifyNoInteractions(notificationService);
     }
 
     private Review createReview(
