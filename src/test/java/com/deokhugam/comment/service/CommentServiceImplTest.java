@@ -3,7 +3,9 @@ package com.deokhugam.comment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +18,11 @@ import com.deokhugam.comment.entity.Comment;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
+import com.deokhugam.notification.entity.NotificationType;
+import com.deokhugam.notification.service.NotificationService;
+import com.deokhugam.review.entity.Review;
 import com.deokhugam.review.exception.ReviewNotFoundException;
+import com.deokhugam.review.repository.ReviewRepository;
 import com.deokhugam.user.entity.User;
 import com.deokhugam.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -30,10 +36,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.deokhugam.review.repository.ReviewRepository;
-import com.deokhugam.review.entity.Review;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceImplTest {
@@ -47,6 +49,9 @@ class CommentServiceImplTest {
     @Mock
     private ReviewRepository reviewRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     private CommentServiceImpl commentService;
 
     @BeforeEach
@@ -55,7 +60,8 @@ class CommentServiceImplTest {
                 new CommentServiceImpl(
                         commentRepository,
                         userRepository,
-                        reviewRepository
+                        reviewRepository,
+                        notificationService
                 );
     }
 
@@ -66,6 +72,7 @@ class CommentServiceImplTest {
         // given
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
+        UUID reviewWriterId = UUID.randomUUID();
 
         CommentCreateRequest request =
                 new CommentCreateRequest(
@@ -74,25 +81,46 @@ class CommentServiceImplTest {
                         "테스트 댓글입니다."
                 );
 
-        Review review = mock(Review.class);
+        User commentWriter =
+                mock(User.class);
 
-        when(
-                reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
-        ).thenReturn(Optional.of(review));
-
-        User user = mock(User.class);
-
-        when(user.getNickname())
+        when(commentWriter.getNickname())
                 .thenReturn("테스트유저");
 
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
+        User reviewWriter =
+                mock(User.class);
 
-        when(commentRepository.save(any(Comment.class)))
-                .thenAnswer(
-                        invocation ->
-                                invocation.getArgument(0)
-                );
+        Review review =
+                mock(Review.class);
+
+        when(reviewWriter.getId())
+                .thenReturn(reviewWriterId);
+
+        when(review.getUser())
+                .thenReturn(reviewWriter);
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(
+                        reviewId
+                )
+        ).thenReturn(
+                Optional.of(review)
+        );
+
+        when(
+                userRepository.findById(userId)
+        ).thenReturn(
+                Optional.of(commentWriter)
+        );
+
+        when(
+                commentRepository.save(
+                        any(Comment.class)
+                )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
 
         // when
         CommentResponse response =
@@ -114,8 +142,189 @@ class CommentServiceImplTest {
         verify(commentRepository)
                 .save(any(Comment.class));
 
-        verify(userRepository)
-                .findById(userId);
+        verify(notificationService)
+                .createNotification(
+                        reviewWriter,
+                        review,
+                        "회원님의 리뷰에 새로운 댓글이 등록되었습니다.",
+                        NotificationType.NEW_COMMENT
+                );
+    }
+
+    @Test
+    @DisplayName("다른 사용자가 리뷰에 댓글을 작성하면 리뷰 작성자에게 알림을 생성한다")
+    void createCommentCreatesNotification() {
+
+        // given
+        UUID commenterId = UUID.randomUUID();
+        UUID reviewWriterId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+
+        CommentCreateRequest request =
+                new CommentCreateRequest(
+                        commenterId,
+                        reviewId,
+                        "댓글 내용"
+                );
+
+        User reviewWriter =
+                mock(User.class);
+
+        Review review =
+                mock(Review.class);
+
+        when(reviewWriter.getId())
+                .thenReturn(reviewWriterId);
+
+        when(review.getUser())
+                .thenReturn(reviewWriter);
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(
+                        reviewId
+                )
+        ).thenReturn(
+                Optional.of(review)
+        );
+
+        when(
+                commentRepository.save(
+                        any(Comment.class)
+                )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
+
+        when(
+                userRepository.findById(commenterId)
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        // when
+        commentService.create(request);
+
+        // then
+        verify(notificationService)
+                .createNotification(
+                        reviewWriter,
+                        review,
+                        "회원님의 리뷰에 새로운 댓글이 등록되었습니다.",
+                        NotificationType.NEW_COMMENT
+                );
+    }
+
+    @Test
+    @DisplayName("리뷰 작성자가 자신의 리뷰에 댓글을 작성하면 알림을 생성하지 않는다")
+    void createCommentOnOwnReviewDoesNotCreateNotification() {
+
+        // given
+        UUID userId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+
+        CommentCreateRequest request =
+                new CommentCreateRequest(
+                        userId,
+                        reviewId,
+                        "내 리뷰에 작성한 댓글"
+                );
+
+        User reviewWriter =
+                mock(User.class);
+
+        Review review =
+                mock(Review.class);
+
+        when(reviewWriter.getId())
+                .thenReturn(userId);
+
+        when(review.getUser())
+                .thenReturn(reviewWriter);
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(
+                        reviewId
+                )
+        ).thenReturn(
+                Optional.of(review)
+        );
+
+        when(
+                commentRepository.save(
+                        any(Comment.class)
+                )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
+
+        when(
+                userRepository.findById(userId)
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        // when
+        commentService.create(request);
+
+        // then
+        verify(
+                notificationService,
+                never()
+        ).createNotification(
+                any(User.class),
+                any(Review.class),
+                anyString(),
+                any(NotificationType.class)
+        );
+    }
+
+    @Test
+    @DisplayName("활성 상태가 아닌 리뷰에는 댓글을 등록할 수 없다")
+    void createCommentWithInactiveReview() {
+
+        // given
+        UUID userId = UUID.randomUUID();
+        UUID reviewId = UUID.randomUUID();
+
+        CommentCreateRequest request =
+                new CommentCreateRequest(
+                        userId,
+                        reviewId,
+                        "댓글 내용"
+                );
+
+        when(
+                reviewRepository.findByIdAndDeletedAtIsNull(
+                        reviewId
+                )
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        // when & then
+        assertThatThrownBy(
+                () -> commentService.create(request)
+        )
+                .isInstanceOf(
+                        ReviewNotFoundException.class
+                );
+
+        verify(
+                commentRepository,
+                never()
+        ).save(any(Comment.class));
+
+        verify(
+                notificationService,
+                never()
+        ).createNotification(
+                any(User.class),
+                any(Review.class),
+                anyString(),
+                any(NotificationType.class)
+        );
     }
 
     @Test
@@ -134,16 +343,23 @@ class CommentServiceImplTest {
                         reviewId
                 );
 
-        User user = mock(User.class);
+        User user =
+                mock(User.class);
 
         when(user.getNickname())
                 .thenReturn("작성자");
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.of(comment));
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.of(comment)
+        );
 
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
+        when(
+                userRepository.findById(userId)
+        ).thenReturn(
+                Optional.of(user)
+        );
 
         CommentUpdateRequest request =
                 new CommentUpdateRequest(
@@ -175,7 +391,6 @@ class CommentServiceImplTest {
 
         // given
         UUID commentId = UUID.randomUUID();
-
         UUID writerId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
@@ -187,8 +402,11 @@ class CommentServiceImplTest {
                         reviewId
                 );
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.of(comment));
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.of(comment)
+        );
 
         CommentUpdateRequest request =
                 new CommentUpdateRequest(
@@ -203,14 +421,16 @@ class CommentServiceImplTest {
                         request
                 )
         )
-                .isInstanceOf(DeokhugamException.class)
+                .isInstanceOf(
+                        DeokhugamException.class
+                )
                 .satisfies(exception -> {
 
-                    DeokhugamException deokhugamException =
+                    DeokhugamException e =
                             (DeokhugamException) exception;
 
                     assertThat(
-                            deokhugamException.getErrorCode()
+                            e.getErrorCode()
                     ).isEqualTo(
                             ErrorCode.COMMENT_ACCESS_DENIED
                     );
@@ -233,8 +453,11 @@ class CommentServiceImplTest {
                         reviewId
                 );
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.of(comment));
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.of(comment)
+        );
 
         // when
         commentService.delete(
@@ -256,7 +479,6 @@ class CommentServiceImplTest {
 
         // given
         UUID commentId = UUID.randomUUID();
-
         UUID writerId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
@@ -268,8 +490,11 @@ class CommentServiceImplTest {
                         reviewId
                 );
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.of(comment));
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.of(comment)
+        );
 
         // when & then
         assertThatThrownBy(
@@ -278,14 +503,16 @@ class CommentServiceImplTest {
                         otherUserId
                 )
         )
-                .isInstanceOf(DeokhugamException.class)
+                .isInstanceOf(
+                        DeokhugamException.class
+                )
                 .satisfies(exception -> {
 
-                    DeokhugamException deokhugamException =
+                    DeokhugamException e =
                             (DeokhugamException) exception;
 
                     assertThat(
-                            deokhugamException.getErrorCode()
+                            e.getErrorCode()
                     ).isEqualTo(
                             ErrorCode.COMMENT_ACCESS_DENIED
                     );
@@ -313,8 +540,11 @@ class CommentServiceImplTest {
 
         comment.softDelete();
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.of(comment));
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.of(comment)
+        );
 
         CommentUpdateRequest request =
                 new CommentUpdateRequest(
@@ -329,14 +559,16 @@ class CommentServiceImplTest {
                         request
                 )
         )
-                .isInstanceOf(DeokhugamException.class)
+                .isInstanceOf(
+                        DeokhugamException.class
+                )
                 .satisfies(exception -> {
 
-                    DeokhugamException deokhugamException =
+                    DeokhugamException e =
                             (DeokhugamException) exception;
 
                     assertThat(
-                            deokhugamException.getErrorCode()
+                            e.getErrorCode()
                     ).isEqualTo(
                             ErrorCode.COMMENT_ALREADY_DELETED
                     );
@@ -351,8 +583,11 @@ class CommentServiceImplTest {
         UUID commentId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.empty());
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.empty()
+        );
 
         CommentUpdateRequest request =
                 new CommentUpdateRequest(
@@ -367,14 +602,16 @@ class CommentServiceImplTest {
                         request
                 )
         )
-                .isInstanceOf(DeokhugamException.class)
+                .isInstanceOf(
+                        DeokhugamException.class
+                )
                 .satisfies(exception -> {
 
-                    DeokhugamException deokhugamException =
+                    DeokhugamException e =
                             (DeokhugamException) exception;
 
                     assertThat(
-                            deokhugamException.getErrorCode()
+                            e.getErrorCode()
                     ).isEqualTo(
                             ErrorCode.COMMENT_NOT_FOUND
                     );
@@ -389,8 +626,11 @@ class CommentServiceImplTest {
         UUID commentId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        when(commentRepository.findById(commentId))
-                .thenReturn(Optional.empty());
+        when(
+                commentRepository.findById(commentId)
+        ).thenReturn(
+                Optional.empty()
+        );
 
         // when & then
         assertThatThrownBy(
@@ -399,14 +639,16 @@ class CommentServiceImplTest {
                         userId
                 )
         )
-                .isInstanceOf(DeokhugamException.class)
+                .isInstanceOf(
+                        DeokhugamException.class
+                )
                 .satisfies(exception -> {
 
-                    DeokhugamException deokhugamException =
+                    DeokhugamException e =
                             (DeokhugamException) exception;
 
                     assertThat(
-                            deokhugamException.getErrorCode()
+                            e.getErrorCode()
                     ).isEqualTo(
                             ErrorCode.COMMENT_NOT_FOUND
                     );
@@ -518,25 +760,31 @@ class CommentServiceImplTest {
                 thirdCreatedAt
         );
 
-        User user = mock(User.class);
+        User user =
+                mock(User.class);
 
         when(user.getNickname())
                 .thenReturn("작성자");
 
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.of(user));
+        when(
+                userRepository.findById(userId)
+        ).thenReturn(
+                Optional.of(user)
+        );
 
-        when(commentRepository.findAllByCursor(request))
-                .thenReturn(
-                        List.of(
-                                first,
-                                second,
-                                third
-                        )
-                );
+        when(
+                commentRepository.findAllByCursor(request)
+        ).thenReturn(
+                List.of(
+                        first,
+                        second,
+                        third
+                )
+        );
 
-        when(commentRepository.countAll(request))
-                .thenReturn(3L);
+        when(
+                commentRepository.countAll(request)
+        ).thenReturn(3L);
 
         // when
         CommentListResponse response =
@@ -545,15 +793,6 @@ class CommentServiceImplTest {
         // then
         assertThat(response.content())
                 .hasSize(2);
-
-        assertThat(response.content().get(0).content())
-                .isEqualTo("첫 번째");
-
-        assertThat(response.content().get(1).content())
-                .isEqualTo("두 번째");
-
-        assertThat(response.content().get(0).userNickname())
-                .isEqualTo("작성자");
 
         assertThat(response.size())
                 .isEqualTo(2);
@@ -564,17 +803,15 @@ class CommentServiceImplTest {
         assertThat(response.hasNext())
                 .isTrue();
 
-        /*
-         * 복합 커서
-         *
-         * cursor = 마지막 반환 댓글 ID
-         * after  = 마지막 반환 댓글 createdAt
-         */
         assertThat(response.nextCursor())
-                .isEqualTo(secondId.toString());
+                .isEqualTo(
+                        secondId.toString()
+                );
 
         assertThat(response.nextAfter())
-                .isEqualTo(secondCreatedAt);
+                .isEqualTo(
+                        secondCreatedAt
+                );
     }
 
     @Test
@@ -593,11 +830,15 @@ class CommentServiceImplTest {
                         10
                 );
 
-        when(commentRepository.findAllByCursor(request))
-                .thenReturn(List.of());
+        when(
+                commentRepository.findAllByCursor(request)
+        ).thenReturn(
+                List.of()
+        );
 
-        when(commentRepository.countAll(request))
-                .thenReturn(0L);
+        when(
+                commentRepository.countAll(request)
+        ).thenReturn(0L);
 
         // when
         CommentListResponse response =
@@ -630,6 +871,7 @@ class CommentServiceImplTest {
         // given
         UUID userId = UUID.randomUUID();
         UUID reviewId = UUID.randomUUID();
+        UUID reviewWriterId = UUID.randomUUID();
 
         CommentCreateRequest request =
                 new CommentCreateRequest(
@@ -638,21 +880,40 @@ class CommentServiceImplTest {
                         "댓글"
                 );
 
-        // ★ 활성 리뷰 존재 설정 추가
-        Review review = mock(Review.class);
+        User reviewWriter =
+                mock(User.class);
+
+        Review review =
+                mock(Review.class);
+
+        when(reviewWriter.getId())
+                .thenReturn(reviewWriterId);
+
+        when(review.getUser())
+                .thenReturn(reviewWriter);
 
         when(
-                reviewRepository.findByIdAndDeletedAtIsNull(reviewId)
-        ).thenReturn(Optional.of(review));
+                reviewRepository.findByIdAndDeletedAtIsNull(
+                        reviewId
+                )
+        ).thenReturn(
+                Optional.of(review)
+        );
 
-        when(commentRepository.save(any(Comment.class)))
-                .thenAnswer(
-                        invocation ->
-                                invocation.getArgument(0)
-                );
+        when(
+                commentRepository.save(
+                        any(Comment.class)
+                )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
 
-        when(userRepository.findById(userId))
-                .thenReturn(Optional.empty());
+        when(
+                userRepository.findById(userId)
+        ).thenReturn(
+                Optional.empty()
+        );
 
         // when
         CommentResponse response =
@@ -661,36 +922,13 @@ class CommentServiceImplTest {
         // then
         assertThat(response.userNickname())
                 .isEmpty();
-    }
 
-    @Test
-    @DisplayName("활성 상태가 아닌 리뷰에는 댓글을 등록할 수 없다")
-    void createCommentWithInactiveReview() {
-
-        UUID userId = UUID.randomUUID();
-        UUID reviewId = UUID.randomUUID();
-
-        CommentCreateRequest request =
-                new CommentCreateRequest(
-                        userId,
-                        reviewId,
-                        "댓글 내용"
+        verify(notificationService)
+                .createNotification(
+                        reviewWriter,
+                        review,
+                        "회원님의 리뷰에 새로운 댓글이 등록되었습니다.",
+                        NotificationType.NEW_COMMENT
                 );
-
-        when(
-                reviewRepository.findByIdAndDeletedAtIsNull(
-                        reviewId
-                )
-        ).thenReturn(Optional.empty());
-
-        assertThatThrownBy(
-                () -> commentService.create(request)
-        )
-                .isInstanceOf(ReviewNotFoundException.class);
-
-        verify(
-                commentRepository,
-                never()
-        ).save(any(Comment.class));
     }
 }

@@ -9,6 +9,9 @@ import com.deokhugam.comment.entity.Comment;
 import com.deokhugam.comment.repository.CommentRepository;
 import com.deokhugam.global.exception.DeokhugamException;
 import com.deokhugam.global.exception.ErrorCode;
+import com.deokhugam.notification.entity.NotificationType;
+import com.deokhugam.notification.service.NotificationService;
+import com.deokhugam.review.entity.Review;
 import com.deokhugam.review.exception.ReviewNotFoundException;
 import com.deokhugam.review.repository.ReviewRepository;
 import com.deokhugam.user.entity.User;
@@ -28,13 +31,15 @@ public class CommentServiceImpl implements CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
     public CommentResponse create(
             CommentCreateRequest request
     ) {
-        validateActiveReview(request.reviewId());
+        Review review =
+                findActiveReview(request.reviewId());
 
         Comment comment = new Comment(
                 request.content(),
@@ -44,6 +49,11 @@ public class CommentServiceImpl implements CommentService {
 
         Comment savedComment =
                 commentRepository.save(comment);
+
+        createCommentNotification(
+                review,
+                request.userId()
+        );
 
         return toResponse(savedComment);
     }
@@ -146,6 +156,18 @@ public class CommentServiceImpl implements CommentService {
                 );
     }
 
+    private Review findActiveReview(
+            UUID reviewId
+    ) {
+        return reviewRepository
+                .findByIdAndDeletedAtIsNull(reviewId)
+                .orElseThrow(
+                        () -> new ReviewNotFoundException(
+                                reviewId
+                        )
+                );
+    }
+
     private void validateOwner(
             Comment comment,
             UUID requesterId
@@ -157,16 +179,23 @@ public class CommentServiceImpl implements CommentService {
         }
     }
 
-    private void validateActiveReview(
-            UUID reviewId
+    private void createCommentNotification(
+            Review review,
+            UUID commenterId
     ) {
-        reviewRepository
-                .findByIdAndDeletedAtIsNull(reviewId)
-                .orElseThrow(
-                        () -> new ReviewNotFoundException(
-                                reviewId
-                        )
-                );
+        User reviewWriter =
+                review.getUser();
+
+        if (reviewWriter.getId().equals(commenterId)) {
+            return;
+        }
+
+        notificationService.createNotification(
+                reviewWriter,
+                review,
+                "회원님의 리뷰에 새로운 댓글이 등록되었습니다.",
+                NotificationType.NEW_COMMENT
+        );
     }
 
     private CommentResponse toResponse(
