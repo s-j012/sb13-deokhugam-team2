@@ -1,6 +1,7 @@
 package com.deokhugam.dashboard.controller;
 
 import com.deokhugam.book.dto.response.CursorPageResponse;
+import com.deokhugam.dashboard.controller.doc.DashboardControllerDoc;
 import com.deokhugam.dashboard.dto.response.PopularBookDto;
 import com.deokhugam.dashboard.dto.response.PopularReviewDto;
 import com.deokhugam.dashboard.entity.PeriodType;
@@ -21,10 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api")
 @Validated
-public class DashboardController {
+public class DashboardController implements DashboardControllerDoc {
 
   private final DashboardQueryService dashboardQueryService;
 
+  @Override
   @GetMapping("/books/popular")
   public ResponseEntity<CursorPageResponse<PopularBookDto>> getPopularBooks(
       @RequestParam(name = "period", defaultValue = "DAILY") PeriodType period,
@@ -39,6 +41,7 @@ public class DashboardController {
     );
   }
 
+  @Override
   @GetMapping("/reviews/popular")
   public ResponseEntity<CursorPageResponse<PopularReviewDto>> getPopularReviews(
       @RequestParam(name = "period", defaultValue = "DAILY") PeriodType period,
@@ -52,18 +55,4 @@ public class DashboardController {
         dashboardQueryService.getPopularReviews(period, direction, cursor, after, limit)
     );
   }
-
-//  @GetMapping("/users/power")
-//  public ResponseEntity<CursorPageResponse<PowerUserDto>> getPowerUsers(
-//      @RequestParam(name = "period", defaultValue = "DAILY") PeriodType period,
-//      @RequestParam(name = "direction", defaultValue = "ASC") Sort.Direction direction,
-//      @RequestParam(name = "cursor", required = false) String cursor,
-//      @RequestParam(name = "after", required = false)
-//      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
-//      @RequestParam(name = "limit", defaultValue = "50") @Positive int limit
-//  ) {
-//    return ResponseEntity.ok(
-//        dashboardQueryService.getPowerUsers(period, direction, cursor, after, limit)
-//    );
-//  }
 }
