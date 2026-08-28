@@ -20,7 +20,7 @@ public class NotificationCleanupBatch {
   @Scheduled(cron = "*/10 * * * * *")
   //@Scheduled(cron = "0 0 4 * * *")
   public void cleanupOldNotifications() {
-    LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+    LocalDateTime cutoffDate = LocalDateTime.now().minusDays(7);
     int deletCount = notificationRepository.deleteAllByCreatedAtBefore(cutoffDate);
     log.info("오래된 알림 {}건 삭제 완료", deletCount);
   }
