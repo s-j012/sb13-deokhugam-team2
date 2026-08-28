@@ -17,8 +17,8 @@ public class NotificationCleanupBatch {
   private final NotificationRepository notificationRepository;
 
   @Transactional
-  @Scheduled(cron = "*/10 * * * * *")
-  //@Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
+  //@Scheduled(cron = "*/10 * * * * *") //테스트용
+  @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
   public void cleanupOldNotifications() {
     LocalDateTime cutoffDate = LocalDateTime.now().minusDays(7);
     int deleteCount = notificationRepository.deleteOldConfirmedNotifications(cutoffDate);
