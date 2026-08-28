@@ -42,6 +42,6 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
   // 특정 날짜(cutoffDate)보다 이전에 생성된 알림들을 한 방에 삭제하는 쿼리
   @Modifying
-  @Query("delete from Notification n where n.createdAt < :cutoffDate")
-  int deleteAllByCreatedAtBefore(@Param("cutoffDate") LocalDateTime cutoffDate);
+  @Query("delete from Notification n where n.isConfirmed = true and n.createdAt < :cutoffDate")
+  int deleteOldConfirmedNotifications(@Param("cutoffDate") LocalDateTime cutoffDate);
 }
