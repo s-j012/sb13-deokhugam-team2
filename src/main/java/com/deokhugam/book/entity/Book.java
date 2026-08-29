@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
-    name = "book",
+    name = "books",
     indexes = {
         @Index(
             name = "idx_book_title_created_at",
