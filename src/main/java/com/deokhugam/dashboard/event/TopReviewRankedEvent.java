@@ -1,4 +1,4 @@
-package com.deokhugam.notification.event;
+package com.deokhugam.dashboard.event;
 
 import com.deokhugam.dashboard.entity.PeriodType;
 import java.util.List;

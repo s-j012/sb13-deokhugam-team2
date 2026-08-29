@@ -54,10 +54,10 @@ public class NotificationService {
 
   @Transactional
   public void readAllNotification(UUID userId){
-    List<Notification> unreadNotificarion = notificationRepository.findAllByUserIdAndIsConfirmedFalse(userId);
+    List<Notification> unreadNotification = notificationRepository.findAllByUserIdAndIsConfirmedFalse(userId);
 
     // 가져온 알림들을 하나씩 꺼내어 무조건 읽음(true)으로 바꿉니다.
-    for(Notification notifications : unreadNotificarion) {
+    for(Notification notifications : unreadNotification) {
       notifications.updateConfirmStatus(true);
     }
   }
@@ -145,7 +145,7 @@ public class NotificationService {
   }
 
   // 대시보드에서 1~10위 리뷰 ID들을 주면, 해당 리뷰 작성자들에게 알림을 생성.
-  @Transactional
+  @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
   public void createTopReviewNotifications(List<UUID> topReviewIds) {
     // 1. 리뷰 ID들로 리뷰 엔티티들을 DB에서 한 번에 싹 다 가져옵니다.
     List<Review> topReviews = reviewRepository.findAllById(topReviewIds);
