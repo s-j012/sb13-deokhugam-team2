@@ -1,5 +1,6 @@
 package com.deokhugam.notification.event;
 
+import com.deokhugam.dashboard.event.TopReviewRankedEvent;
 import com.deokhugam.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
