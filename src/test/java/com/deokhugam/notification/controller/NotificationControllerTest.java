@@ -61,7 +61,7 @@ class NotificationControllerTest {
     // when & then
     // GET /api/notification?cursor=...&size=10
     mockMvc.perform(get("/api/notifications")
-            .header("Deokhugam-Request-User-ID", userId.toString())
+            .param("userId", userId.toString())
             .param("after", after)
             .param("limit", String.valueOf(limit)))
         .andExpect(status().isOk());

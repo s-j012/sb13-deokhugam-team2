@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Pattern;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +36,10 @@ public interface NotificationControllerDoc {
   ResponseEntity<NotificationDto> readNotification(
       @Parameter(description = "알림 ID", example = "123e4567-e89b-12d3-a456-426614174000")
       @PathVariable UUID notificationId,
+
       @Parameter(description = "요청자 ID", required = true,  example = "123e4567-e89b-12d3-a456-426614174000")
       @RequestHeader(value = "Deokhugam-Request-User-ID") UUID userId,
+
       @RequestBody NotificationUpdateRequest request
   );
 
@@ -69,12 +72,17 @@ public interface NotificationControllerDoc {
   ResponseEntity<NotificationListResponse> getNotifications(
       @Parameter(description = "사용자 ID", required = true, example = "123e4567-e89b-12d3-a456-426614174000")
       @RequestParam UUID userId,
+
       @Parameter(description = "정렬 방향", example = "DESC", schema = @Schema(type = "string", allowableValues = {"ASC", "DESC"}, defaultValue = "DESC"))
+      @Pattern(regexp = "^(ASC|DESC)$", message = "정렬 방향은 ASC 또는 DESC만 허용됩니다.")
       @RequestParam(required = false, defaultValue = "DESC") String direction,
+
       @Parameter(description = "커서 페이지네이션 커서")
       @RequestParam(required = false) String cursor,
+
       @Parameter(description = "보조 커서(createdAt)")
       @RequestParam(required = false) LocalDateTime after,
+
       @Parameter(description = "페이지 크기", example = "20")
       @RequestParam(required = false, defaultValue = "20") int limit
   );
