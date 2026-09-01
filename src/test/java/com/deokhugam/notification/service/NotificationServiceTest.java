@@ -194,7 +194,7 @@ class NotificationServiceTest {
     ReflectionTestUtils.setField(noti2, "createdAt", LocalDateTime.now());
 
     // Repository가 limit+1 개인 2개를 조회했다고 가짜 설정
-    given(notificationRepository.findAllByCursorDesc(any(), any(), any()))
+    given(notificationRepository.findAllByUserIdDesc(any(), any()))
         .willReturn(List.of(noti2, noti1)); // 최신순(noti2가 먼저) 정렬
     //사용자의 전체 알림 개수를 2개로 가정
     given(notificationRepository.countByUserId(userId)).willReturn(2L); // 최신순(noti2가 먼저) 정렬
