@@ -421,20 +421,4 @@ class BookControllerTest {
         .should()
         .delete(bookId);
   }
-
-  @Test
-  @DisplayName("도서를 물리 삭제하면 204 No Content를 반환한다")
-  void hardDeleteBook() throws Exception {
-    UUID bookId = UUID.randomUUID();
-
-    mockMvc.perform(
-            delete("/api/books/{bookId}/hard", bookId)
-        )
-        .andExpect(status().isNoContent())
-        .andExpect(content().string(""));
-
-    then(bookService)
-        .should()
-        .hardDelete(bookId);
-  }
 }

@@ -100,15 +100,6 @@ public class BookController implements BookControllerDoc {
   }
 
   @Override
-  @DeleteMapping("/{bookId}/hard")
-  public ResponseEntity<Void> hardDelete(
-      @PathVariable UUID bookId
-  ) {
-    bookService.hardDelete(bookId);
-    return ResponseEntity.noContent().build();
-  }
-
-  @Override
   @GetMapping("/info")
   public ResponseEntity<BookInfoResponse> findBookInfoByIsbn(
       @RequestParam String isbn) {
