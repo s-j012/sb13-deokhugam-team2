@@ -171,4 +171,30 @@ class NotificationRepositoryTest {
     // 남은 알림은 2개(recentRead, oldUnread)여야 합니다.
     assertThat(remaining).hasSize(2);
   }
+
+  @Test
+  @DisplayName("커서 없이 알림 목록을 최신순(내림차순)으로 조회할 수 있다")
+  void findAllByUserIdDesc() {
+    // given
+    User user = userRepository.save(User.create("test-cursor@example.com", "testUser", "password"));
+    Book book = bookRepository.save(
+        new Book("도서 A", "저자 A", "설명 A", "출판사 A", LocalDate.of(2026, 1, 1), "9781234567891"));
+    Review review = reviewRepository.save(
+        Review.create(user, book, "테스트 리뷰", 5));
+
+    Notification noti1 = Notification.builder().user(user).review(review).content("알림1").type(NotificationType.REVIEW_LIKE).build();
+    Notification noti2 = Notification.builder().user(user).review(review).content("알림2").type(NotificationType.NEW_COMMENT).build();
+    notificationRepository.saveAll(List.of(noti1, noti2));
+
+    // 강제로 시간 조작 (noti2가 더 최신)
+    org.springframework.test.util.ReflectionTestUtils.setField(noti1, "createdAt", LocalDateTime.now().minusHours(1));
+    org.springframework.test.util.ReflectionTestUtils.setField(noti2, "createdAt", LocalDateTime.now());
+    notificationRepository.flush();
+    // when: 첫 페이지 조회 (커서 없음)
+    org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 10);
+    List<Notification> result = notificationRepository.findAllByUserIdDesc(user.getId(), pageRequest);
+    // then: 2개가 조회되고, 최신인 noti2가 먼저 나와야 함
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getContent()).isEqualTo("알림2");
+  }
 }
