@@ -23,7 +23,7 @@ public class KakaoBookClient {
         .baseUrl("https://dapi.kakao.com")
         .defaultHeader("Authorization", "KakaoAK " + restApiKey)
         .build();
-    this.imageRestClient = restClientBuilder.build();
+    this.imageRestClient = RestClient.builder().build();
   }
 
   public KakaoBookSearchResponse searchByIsbn(String isbn) {
