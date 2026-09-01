@@ -239,8 +239,11 @@ public class BasicBookService implements BookService {
     LocalDate publishedDate =
         document.datetime() != null ? document.datetime().toLocalDate() : null;
 
-    String thumbnailImage =
-        googleBookClient.findThumbnailBase64ByIsbn(isbn);
+    String thumbnailImage = kakaoBookClient.findThumbnailBase64(document.thumbnail());
+
+    if (thumbnailImage == null || thumbnailImage.isBlank()) {
+      thumbnailImage = googleBookClient.findThumbnailBase64ByIsbn(isbn);
+    }
 
     return new BookInfoResponse(
         document.title(),
@@ -304,4 +307,3 @@ public class BasicBookService implements BookService {
     };
   }
 }
-

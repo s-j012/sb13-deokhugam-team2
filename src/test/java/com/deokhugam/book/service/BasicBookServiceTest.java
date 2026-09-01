@@ -524,7 +524,7 @@ class BasicBookServiceTest {
   }
 
   @Test
-  @DisplayName("ISBN으로 도서 정보를 조회한다.")
+  @DisplayName("ISBN으로 도서 정보를 조회하고 Kakao 원본 썸네일 Base64를 사용한다.")
   void findBookInfoByIsbn() {
     String isbn = "9788960777330";
 
@@ -544,6 +544,8 @@ class BasicBookServiceTest {
 
     when(kakaoBookClient.searchByIsbn(isbn))
         .thenReturn(response);
+    when(kakaoBookClient.findThumbnailBase64("https://example.com/thumbnail.jpg"))
+        .thenReturn("kakao-thumbnail-base64");
 
     BookInfoResponse result =
         basicBookService.findBookInfoByIsbn(isbn);
@@ -555,6 +557,8 @@ class BasicBookServiceTest {
         LocalDate.of(2015, 7, 28),
         result.publishedDate()
     );
+    assertEquals("kakao-thumbnail-base64", result.thumbnailImage());
+    verify(googleBookClient, never()).findThumbnailBase64ByIsbn(any());
   }
 
   @Test
@@ -761,4 +765,53 @@ class BasicBookServiceTest {
     then(reviewRepository)
         .shouldHaveNoInteractions();
   }
+
+  @Test
+  @DisplayName("Kakao 원본 썸네일 변환이 실패하면 Google Books 썸네일을 사용한다.")
+  void findBookInfoByIsbnFallbackToGoogleThumbnail() {
+    String isbn = "9788960777330";
+    String googleThumbnailBase64 = "google-thumbnail-base64";
+
+    KakaoBookSearchResponse.Document document =
+        new KakaoBookSearchResponse.Document(
+            "자바 ORM 표준 JPA 프로그래밍",
+            "JPA 학습용 도서",
+            isbn,
+            OffsetDateTime.parse("2015-07-28T00:00:00+09:00"),
+            List.of("김영한"),
+            "에이콘출판",
+            "https://example.com/kakao-thumbnail.jpg"
+        );
+
+    KakaoBookSearchResponse response =
+        new KakaoBookSearchResponse(List.of(document));
+
+    when(kakaoBookClient.searchByIsbn(isbn))
+        .thenReturn(response);
+    when(kakaoBookClient.findThumbnailBase64(
+        "https://example.com/kakao-thumbnail.jpg"
+    )).thenReturn(null);
+
+    when(googleBookClient.findThumbnailBase64ByIsbn(isbn))
+        .thenReturn(googleThumbnailBase64);
+
+    BookInfoResponse result =
+        basicBookService.findBookInfoByIsbn(isbn);
+
+    assertEquals("자바 ORM 표준 JPA 프로그래밍", result.title());
+    assertEquals("김영한", result.author());
+    assertEquals(isbn, result.isbn());
+    assertEquals(
+        LocalDate.of(2015, 7, 28),
+        result.publishedDate()
+    );
+    assertEquals(
+        googleThumbnailBase64,
+        result.thumbnailImage()
+    );
+
+    verify(googleBookClient)
+        .findThumbnailBase64ByIsbn(isbn);
+  }
+
 }
