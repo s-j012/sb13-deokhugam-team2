@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -156,9 +158,24 @@ public class BasicBookService implements BookService {
 
       book.updateThumbnailUrl(newThumbnailPath);
 
-      if (oldThumbnailPath != null && !oldThumbnailPath.isBlank()) {
-        storage.delete(oldThumbnailPath);
-      }
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+
+            @Override
+            public void afterCommit() {
+              if (oldThumbnailPath != null && !oldThumbnailPath.isBlank()) {
+                storage.delete(oldThumbnailPath);
+              }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+              if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                storage.delete(newThumbnailPath);
+              }
+            }
+          }
+      );
     }
 
     return toDto(book, result.reviewCount(), result.rating());
