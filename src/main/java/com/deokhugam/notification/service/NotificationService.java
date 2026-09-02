@@ -78,10 +78,21 @@ public class NotificationService {
 
     // 3. 정렬 방향(direction)에 따라 다른 쿼리 호출
     List<Notification> searched;
-    if ("ASC".equalsIgnoreCase(direction)) {
-      searched = notificationRepository.findAllByCursorAsc(userId, targetCursor, pageRequest);
-    } else {
-      searched = notificationRepository.findAllByCursorDesc(userId, targetCursor, pageRequest);
+
+    if (targetCursor == null) {
+      //커서가 없는 경우 (첫 페이지) -> 새로 만든 쿼리 호출
+      if ("ASC".equalsIgnoreCase(direction)) {
+        searched = notificationRepository.findAllByUserIdAsc(userId, pageRequest);
+      } else {
+        searched = notificationRepository.findAllByUserIdDesc(userId, pageRequest);
+      }
+    }else {
+      //커서가 있는 경우 (다음 페이지) -> 기존 커서 쿼리 호출
+      if ("ASC".equalsIgnoreCase(direction)) {
+        searched = notificationRepository.findAllByCursorAsc(userId, targetCursor, pageRequest);
+      } else {
+        searched = notificationRepository.findAllByCursorDesc(userId, targetCursor, pageRequest);
+      }
     }
 
     // 4. limit보다 1개 더 많이 조회되었다면, 다음 페이지가 있다는 뜻!
