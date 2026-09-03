@@ -1,6 +1,7 @@
 package com.deokhugam.book.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -927,6 +929,68 @@ class BasicBookServiceTest {
       // 롤백하면 새 파일을 제거하고 기존 파일은 유지
       verify(storage).delete("book-thumbnails/new.jpg");
       verify(storage, never()).delete("book-thumbnails/old.jpg");
+
+    } finally {
+      TransactionSynchronizationManager.clearSynchronization();
+    }
+  }
+
+  @Test
+  @DisplayName("커밋 후 기존 썸네일 삭제에 실패해도 예외를 전파하지 않는다.")
+  void updateBookThumbnailDeleteFailureAfterCommitDoesNotPropagate() {
+
+    UUID bookId = UUID.randomUUID();
+
+    Book book = new Book(
+        "기존 제목",
+        "기존 저자",
+        "기존 설명",
+        "기존 출판사",
+        LocalDate.of(2024, 1, 1),
+        "9788960777330"
+    );
+    book.updateThumbnailUrl("book-thumbnails/old.jpg");
+
+    BookUpdateRequest request = new BookUpdateRequest(
+        "수정된 제목",
+        "수정된 저자",
+        "수정된 설명",
+        "수정된 출판사",
+        LocalDate.of(2025, 1, 1)
+    );
+
+    MultipartFile thumbnailImage = mock(MultipartFile.class);
+
+    BookSearchResult searchResult =
+        new BookSearchResult(book, 3L, 4.0);
+
+    when(bookRepository.findByIdWithReviewStats(bookId))
+        .thenReturn(Optional.of(searchResult));
+
+    when(thumbnailImage.isEmpty())
+        .thenReturn(false);
+
+    when(storage.upload(thumbnailImage))
+        .thenReturn("book-thumbnails/new.jpg");
+
+    doThrow(new IllegalStateException("S3 삭제 실패"))
+        .when(storage)
+        .delete("book-thumbnails/old.jpg");
+
+    TransactionSynchronizationManager.initSynchronization();
+
+    try {
+      basicBookService.update(bookId, request, thumbnailImage);
+
+      TransactionSynchronization synchronization =
+          TransactionSynchronizationManager
+              .getSynchronizations()
+              .get(0);
+
+      assertThatCode(synchronization::afterCommit)
+          .doesNotThrowAnyException();
+
+      verify(storage).delete("book-thumbnails/old.jpg");
 
     } finally {
       TransactionSynchronizationManager.clearSynchronization();
