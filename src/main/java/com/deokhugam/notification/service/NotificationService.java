@@ -69,17 +69,19 @@ public class NotificationService {
     PageRequest pageRequest = PageRequest.of(0, limit + 1);
 
     // 2. 커서 처리: after가 있으면 최우선 적용, 없으면 문자열 cursor를 변환
-    LocalDateTime targetCursor = null;
-    if (after != null) {
-      targetCursor = after;
-    } else if (cursor != null && !cursor.isBlank()) {
-      targetCursor = LocalDateTime.parse(cursor);
+    LocalDateTime targetCursorTime = after;
+    UUID targetCursorId = null;
+    if (cursor != null && !cursor.isBlank()) {
+      try {
+        targetCursorId = UUID.fromString(cursor);
+      } catch (IllegalArgumentException e) {
+        targetCursorTime = LocalDateTime.parse(cursor);
+      }
     }
-
     // 3. 정렬 방향(direction)에 따라 다른 쿼리 호출
     List<Notification> searched;
 
-    if (targetCursor == null) {
+    if (targetCursorTime == null) {
       //커서가 없는 경우 (첫 페이지) -> 새로 만든 쿼리 호출
       if ("ASC".equalsIgnoreCase(direction)) {
         searched = notificationRepository.findAllByUserIdAsc(userId, pageRequest);
@@ -89,9 +91,9 @@ public class NotificationService {
     }else {
       //커서가 있는 경우 (다음 페이지) -> 기존 커서 쿼리 호출
       if ("ASC".equalsIgnoreCase(direction)) {
-        searched = notificationRepository.findAllByCursorAsc(userId, targetCursor, pageRequest);
+        searched = notificationRepository.findAllByCursorAsc(userId, targetCursorTime, targetCursorId, pageRequest);
       } else {
-        searched = notificationRepository.findAllByCursorDesc(userId, targetCursor, pageRequest);
+        searched = notificationRepository.findAllByCursorDesc(userId, targetCursorTime, targetCursorId, pageRequest);
       }
     }
 
@@ -114,9 +116,10 @@ public class NotificationService {
     // 7. 다음 페이지 요청을 위한 커서값 세팅
     String nextCursor = null;
     LocalDateTime nextAfter = null;
+
     if (hasNext && !notifications.isEmpty()) {
       Notification lastItem = notifications.get(notifications.size() - 1);
-      nextCursor = lastItem.getCreatedAt() != null ? lastItem.getCreatedAt().toString() : null;
+      nextCursor = lastItem.getId().toString();
       nextAfter = lastItem.getCreatedAt();
     }
 

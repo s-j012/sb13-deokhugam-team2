@@ -193,6 +193,10 @@ class NotificationServiceTest {
     ReflectionTestUtils.setField(noti1, "createdAt", LocalDateTime.now().minusHours(1));
     ReflectionTestUtils.setField(noti2, "createdAt", LocalDateTime.now());
 
+    //ID를 커서로 사용하므로 가짜 ID도 세팅
+    ReflectionTestUtils.setField(noti1, "id", UUID.randomUUID());
+    ReflectionTestUtils.setField(noti2, "id", UUID.randomUUID());
+
     // Repository가 limit+1 개인 2개를 조회했다고 가짜 설정
     given(notificationRepository.findAllByUserIdDesc(any(), any()))
         .willReturn(List.of(noti2, noti1)); // 최신순(noti2가 먼저) 정렬
@@ -243,5 +247,46 @@ class NotificationServiceTest {
     // 검증 2: 만들어진 첫 번째 알림의 타입(Type)은 TOP_REVIEW 여야 합니다!
     org.assertj.core.api.Assertions.assertThat(savedNotifications.get(0).getType())
         .isEqualTo(NotificationType.TOP_REVIEW);
+  }
+
+  @Test
+  @DisplayName("신규 복합 커서 요청 시 - cursor(ID)와 after(시간)가 정상적으로 Repository에 전달된다")
+  void getNotifications_WithComplexCursor() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID cursorId = UUID.randomUUID(); // 프론트가 넘겨준 ID
+    LocalDateTime afterTime = LocalDateTime.now().minusHours(1); // 프론트가 넘겨준 시간
+    String cursorStr = cursorId.toString(); // 정상적인 신규 버전의 cursor (UUID 형태)
+    org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 11);
+
+    // Repository가 호출되었을 때 빈 리스트를 반환하도록 가짜 설정
+    given(notificationRepository.findAllByCursorDesc(userId, afterTime, cursorId, pageRequest))
+        .willReturn(List.of());
+    given(notificationRepository.countByUserId(userId)).willReturn(0L);
+    // when
+    notificationService.getNotifications(userId, "DESC", cursorStr, afterTime, 10);
+    // then
+    // 우리가 의도한 대로 Repository에 afterTime과 cursorId가 정확히 분리되어 전달되었는지 검증!
+    org.mockito.Mockito.verify(notificationRepository).findAllByCursorDesc(userId, afterTime, cursorId, pageRequest);
+  }
+  @Test
+  @DisplayName("구버전 하위 호환성 요청 시 - cursor에 시간 문자열이 오면 Fallback 로직이 작동하여 시간으로 처리된다")
+  void getNotifications_WithLegacyFallbackCursor() {
+    // given
+    UUID userId = UUID.randomUUID();
+    LocalDateTime legacyTime = LocalDateTime.now().minusHours(2);
+    // 구버전 프론트엔드가 넘겨준 cursor (UUID가 아닌 시간 형태의 문자열)
+    String legacyCursorStr = legacyTime.toString();
+    org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 11);
+
+    given(notificationRepository.findAllByCursorDesc(userId, legacyTime, null, pageRequest))
+        .willReturn(List.of());
+    given(notificationRepository.countByUserId(userId)).willReturn(0L);
+    // when (after는 null이고, cursor에만 시간 문자열이 들어옴)
+    notificationService.getNotifications(userId, "DESC", legacyCursorStr, null, 10);
+    // then
+    // Exception이 터지지 않고, catch문에 잡혀서 legacyTime이 시간 커서로 잘 변환되어 전달되었는지 검증!
+    // (이때 ID 커서 자리는 null이어야 정상)
+    org.mockito.Mockito.verify(notificationRepository).findAllByCursorDesc(userId, legacyTime, null, pageRequest);
   }
 }
