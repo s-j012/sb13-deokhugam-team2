@@ -35,10 +35,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -156,9 +160,30 @@ public class BasicBookService implements BookService {
 
       book.updateThumbnailUrl(newThumbnailPath);
 
-      if (oldThumbnailPath != null && !oldThumbnailPath.isBlank()) {
-        storage.delete(oldThumbnailPath);
-      }
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+
+            @Override
+            public void afterCommit() {
+              if (oldThumbnailPath != null && !oldThumbnailPath.isBlank()) {
+                try {
+                  storage.delete(oldThumbnailPath);
+                } catch (RuntimeException e) {
+                  log.error(
+                      "기존 도서 썸네일 삭제에 실패했습니다. path={}", oldThumbnailPath, e
+                  );
+                }
+              }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+              if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                storage.delete(newThumbnailPath);
+              }
+            }
+          }
+      );
     }
 
     return toDto(book, result.reviewCount(), result.rating());
