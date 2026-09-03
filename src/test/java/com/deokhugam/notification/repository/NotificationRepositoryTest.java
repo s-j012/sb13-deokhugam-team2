@@ -11,6 +11,7 @@ import com.deokhugam.global.config.JpaConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -227,5 +228,43 @@ class NotificationRepositoryTest {
     // then: 오래된 noti1(1시간 전)이 먼저 나와야 함
     assertThat(result).hasSize(2);
     assertThat(result.get(0).getContent()).isEqualTo("알림1");
+  }
+
+  @Test
+  @DisplayName("생성 시간이 완전히 똑같은 알림들도 복합 커서를 통해 누락 없이 조회할 수 있다")
+  @SuppressWarnings("SqlResolve")
+  void findAllByCursorDesc_withSameCreatedAt() {
+    // given
+    User user = userRepository.save(User.create("same-time@example.com", "sameTimeUser", "password"));
+    Book book = bookRepository.save(new Book("도서 C", "저자 C", "설명 C", "출판사 C", java.time.LocalDate.of(2026, 1, 1), "9781234567893"));
+    Review review = reviewRepository.save(Review.create(user, book, "테스트 리뷰3", 5));
+
+    Notification noti1 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림1").type(NotificationType.REVIEW_LIKE).build());
+    Notification noti2 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림2").type(NotificationType.NEW_COMMENT).build());
+    Notification noti3 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림3").type(NotificationType.REVIEW_LIKE).build());
+
+    // 해결 1: 밀리초 단위로 잘라내어 DB 저장 시 소수점 이하 시간 차이(나노초)로 인한 버그 방지
+    LocalDateTime sameTime = LocalDateTime.now().minusHours(2).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+
+    entityManager.createNativeQuery("UPDATE notifications SET created_at = :time WHERE id IN (:id1, :id2, :id3)")
+        .setParameter("time", sameTime)
+        .setParameter("id1", noti1.getId())
+        .setParameter("id2", noti2.getId())
+        .setParameter("id3", noti3.getId())
+        .executeUpdate();
+    entityManager.clear(); // DB 업데이트 후 영속성 컨텍스트 초기화
+
+    // 해결 2: UUID는 랜덤이므로 일단 전체를 조회해서 정렬 결과상 가장 위에 있는(제일 큰 UUID) 알림을 찾습니다.
+    org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 10);
+    List<Notification> allNotifications = notificationRepository.findAllByUserIdDesc(user.getId(), pageRequest);
+    Notification topNotification = allNotifications.get(0); // 1등 (커서로 사용)
+
+    // when: 1등 알림을 커서로 삼아 다음 데이터를 요청
+    List<Notification> result = notificationRepository.findAllByCursorDesc(user.getId(), sameTime, topNotification.getId(), pageRequest);
+
+    // then: 첫 번째 알림을 제외한 나머지 2개가 누락 없이 순서대로 조회되어야 함!
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getId()).isEqualTo(allNotifications.get(1).getId());
+    assertThat(result.get(1).getId()).isEqualTo(allNotifications.get(2).getId());
   }
 }

@@ -22,30 +22,30 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
   //user의 안읽은(isConfirmed=false) 알림만 모두 가져오는 퀴리 메서드
   List<Notification> findAllByUserIdAndIsConfirmedFalse(UUID userId);
 
-  @Query("select n from Notification n where n.user.id = :userId order by n.createdAt desc")
+  @Query("select n from Notification n where n.user.id = :userId order by n.createdAt desc, n.id desc")
   List<Notification> findAllByUserIdDesc(@Param("userId") UUID userId, Pageable pageable);
-  @Query("select n from Notification n where n.user.id = :userId order by n.createdAt asc")
+  @Query("select n from Notification n where n.user.id = :userId order by n.createdAt asc, n.id asc")
   List<Notification> findAllByUserIdAsc(@Param("userId") UUID userId, Pageable pageable);
 
   // 1. 내 알림만 카운트하는 메서드 (리뷰 피드백 반영)
   long countByUserId(UUID userId);
   // 2. 내림차순 정렬 (최신순) - 과거 시간(<) 탐색
   @Query("select n from Notification n where n.user.id = :userId " +
-      "and n.createdAt < :cursor " +
-      "order by n.createdAt desc")
+      "and (n.createdAt < :cursorTime or (n.createdAt = :cursorTime and n.id < :cursorId)) " +
+      "order by n.createdAt desc, n.id desc")
   List<Notification> findAllByCursorDesc(
       @Param("userId") UUID userId,
-      @Param("cursor") LocalDateTime cursor,
-      Pageable pageable
+      @Param("cursorTime") LocalDateTime cursorTime,
+      @Param("cursorId") UUID cursorId, Pageable pageable
   );
   // 3. 오름차순 정렬 (오래된순) - 미래 시간(>) 탐색
   @Query("select n from Notification n where n.user.id = :userId " +
-      "and n.createdAt > :cursor " +
-      "order by n.createdAt asc")
+      "and (n.createdAt > :cursorTime or (n.createdAt = :cursorTime and n.id > :cursorId)) " +
+      "order by n.createdAt asc, n.id asc")
   List<Notification> findAllByCursorAsc(
       @Param("userId") UUID userId,
-      @Param("cursor") LocalDateTime cursor,
-      Pageable pageable
+      @Param("cursorTime") LocalDateTime cursorTime,
+      @Param("cursorId") UUID cursorId, Pageable pageable
   );
 
   // 특정 날짜(cutoffDate)보다 이전에 생성된 알림들을 한 방에 삭제하는 쿼리
