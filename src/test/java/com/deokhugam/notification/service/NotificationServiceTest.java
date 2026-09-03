@@ -200,7 +200,7 @@ class NotificationServiceTest {
     given(notificationRepository.countByUserId(userId)).willReturn(2L); // 최신순(noti2가 먼저) 정렬
 
     // when (limit을 1로 요청 -> 2개가 조회됐으니 hasNext는 true여야 함!)
-    NotificationListResponse result = notificationService.getNotifications(userId, "DESC", null, null, 1);
+    NotificationListResponse result = notificationService.getNotifications(userId, "DESC", null, null,null, 1);
 
     // then
     assertThat(result.hasNext()).isTrue();

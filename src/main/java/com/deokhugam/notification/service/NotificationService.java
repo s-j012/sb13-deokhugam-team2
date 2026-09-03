@@ -63,23 +63,23 @@ public class NotificationService {
   }
 
   @Transactional(readOnly = true)
-  public NotificationListResponse getNotifications(UUID userId, String direction, String cursor, LocalDateTime after, int limit) {
+  public NotificationListResponse getNotifications(UUID userId, String direction, String cursor, LocalDateTime after, UUID cursorId, int limit) {
 
     // 1. 다음 페이지가 있는지 확인하기 위해 일부러 limit보다 1개 더(+1) 많이 가져옵니다.
     PageRequest pageRequest = PageRequest.of(0, limit + 1);
 
     // 2. 커서 처리: after가 있으면 최우선 적용, 없으면 문자열 cursor를 변환
-    LocalDateTime targetCursor = null;
+    LocalDateTime targetCursorTime = null;
     if (after != null) {
-      targetCursor = after;
+      targetCursorTime = after;
     } else if (cursor != null && !cursor.isBlank()) {
-      targetCursor = LocalDateTime.parse(cursor);
+      targetCursorTime = LocalDateTime.parse(cursor);
     }
 
     // 3. 정렬 방향(direction)에 따라 다른 쿼리 호출
     List<Notification> searched;
 
-    if (targetCursor == null) {
+    if (targetCursorTime == null) {
       //커서가 없는 경우 (첫 페이지) -> 새로 만든 쿼리 호출
       if ("ASC".equalsIgnoreCase(direction)) {
         searched = notificationRepository.findAllByUserIdAsc(userId, pageRequest);
@@ -89,9 +89,9 @@ public class NotificationService {
     }else {
       //커서가 있는 경우 (다음 페이지) -> 기존 커서 쿼리 호출
       if ("ASC".equalsIgnoreCase(direction)) {
-        searched = notificationRepository.findAllByCursorAsc(userId, targetCursor, pageRequest);
+        searched = notificationRepository.findAllByCursorAsc(userId, targetCursorTime, cursorId, pageRequest);
       } else {
-        searched = notificationRepository.findAllByCursorDesc(userId, targetCursor, pageRequest);
+        searched = notificationRepository.findAllByCursorDesc(userId, targetCursorTime, cursorId, pageRequest);
       }
     }
 
@@ -114,17 +114,19 @@ public class NotificationService {
     // 7. 다음 페이지 요청을 위한 커서값 세팅
     String nextCursor = null;
     LocalDateTime nextAfter = null;
+    UUID nextCursorId = null;
     if (hasNext && !notifications.isEmpty()) {
       Notification lastItem = notifications.get(notifications.size() - 1);
       nextCursor = lastItem.getCreatedAt() != null ? lastItem.getCreatedAt().toString() : null;
       nextAfter = lastItem.getCreatedAt();
+      nextCursorId = lastItem.getId();
     }
 
     // 8. 총 개수 (추후 최적화 가능하지만 일단 DB 카운트 사용)
     long totalElements = notificationRepository.countByUserId(userId);
 
     return new NotificationListResponse(
-        content, nextCursor, nextAfter, content.size(), totalElements, hasNext
+        content, nextCursor, nextAfter, nextCursorId, content.size(), totalElements, hasNext
     );
   }
 

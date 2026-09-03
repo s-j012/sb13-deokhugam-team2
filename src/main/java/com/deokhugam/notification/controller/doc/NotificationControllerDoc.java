@@ -83,6 +83,9 @@ public interface NotificationControllerDoc {
       @Parameter(description = "보조 커서(createdAt)")
       @RequestParam(required = false) LocalDateTime after,
 
+      @Parameter(description = "복합 커서용 마지막 알림 ID")
+      @RequestParam(required = false) UUID cursorId,
+
       @Parameter(description = "페이지 크기", example = "20")
       @RequestParam(required = false, defaultValue = "20") int limit
   );
