@@ -193,6 +193,10 @@ class NotificationServiceTest {
     ReflectionTestUtils.setField(noti1, "createdAt", LocalDateTime.now().minusHours(1));
     ReflectionTestUtils.setField(noti2, "createdAt", LocalDateTime.now());
 
+    //ID를 커서로 사용하므로 가짜 ID도 세팅
+    ReflectionTestUtils.setField(noti1, "id", UUID.randomUUID());
+    ReflectionTestUtils.setField(noti2, "id", UUID.randomUUID());
+
     // Repository가 limit+1 개인 2개를 조회했다고 가짜 설정
     given(notificationRepository.findAllByUserIdDesc(any(), any()))
         .willReturn(List.of(noti2, noti1)); // 최신순(noti2가 먼저) 정렬
@@ -200,7 +204,7 @@ class NotificationServiceTest {
     given(notificationRepository.countByUserId(userId)).willReturn(2L); // 최신순(noti2가 먼저) 정렬
 
     // when (limit을 1로 요청 -> 2개가 조회됐으니 hasNext는 true여야 함!)
-    NotificationListResponse result = notificationService.getNotifications(userId, "DESC", null, null,null, 1);
+    NotificationListResponse result = notificationService.getNotifications(userId, "DESC", null, null, 1);
 
     // then
     assertThat(result.hasNext()).isTrue();

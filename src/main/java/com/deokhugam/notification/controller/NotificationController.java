@@ -52,10 +52,9 @@ public class NotificationController implements NotificationControllerDoc {
       @RequestParam(required = false, defaultValue = "DESC") String direction,
       @RequestParam(required = false) String cursor, // 처음 요청 시엔 null일 수 있으므로 false
       @RequestParam(required = false) LocalDateTime after,
-      @RequestParam(required = false) UUID cursorId, //복합 커서용 ID
       @RequestParam(required = false, defaultValue = "20") int limit // 안 보내면 기본값 10개
   ) {
-    NotificationListResponse result = notificationService.getNotifications(userId, direction, cursor, after, cursorId, limit);
+    NotificationListResponse result = notificationService.getNotifications(userId, direction, cursor, after, limit);
     return ResponseEntity.ok(result);
   }
 }
