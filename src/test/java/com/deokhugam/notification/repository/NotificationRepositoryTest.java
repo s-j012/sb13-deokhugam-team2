@@ -174,6 +174,7 @@ class NotificationRepositoryTest {
 
   @Test
   @DisplayName("커서 없이 알림 목록을 최신순(내림차순)으로 조회할 수 있다")
+  @SuppressWarnings("SqlResolve")
   void findAllByUserIdDesc() {
     // given
     User user = userRepository.save(User.create("test-cursor@example.com", "testUser", "password"));
@@ -182,19 +183,49 @@ class NotificationRepositoryTest {
     Review review = reviewRepository.save(
         Review.create(user, book, "테스트 리뷰", 5));
 
-    Notification noti1 = Notification.builder().user(user).review(review).content("알림1").type(NotificationType.REVIEW_LIKE).build();
-    Notification noti2 = Notification.builder().user(user).review(review).content("알림2").type(NotificationType.NEW_COMMENT).build();
-    notificationRepository.saveAll(List.of(noti1, noti2));
+    Notification noti1 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림1").type(NotificationType.REVIEW_LIKE).build());
+    Notification noti2 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림2").type(NotificationType.NEW_COMMENT).build());
 
-    // 강제로 시간 조작 (noti2가 더 최신)
-    org.springframework.test.util.ReflectionTestUtils.setField(noti1, "createdAt", LocalDateTime.now().minusHours(1));
-    org.springframework.test.util.ReflectionTestUtils.setField(noti2, "createdAt", LocalDateTime.now());
-    notificationRepository.flush();
+    entityManager.createNativeQuery("UPDATE notifications SET created_at = :time WHERE id = :id")
+        .setParameter("time", LocalDateTime.now().minusHours(1))
+        .setParameter("id", noti1.getId())
+        .executeUpdate();
+
+    entityManager.clear(); // 영속성 컨텍스트를 비워야 다음 조회 시 DB에서 새로 바뀐 값을 읽어옵니다.
+
     // when: 첫 페이지 조회 (커서 없음)
     org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 10);
     List<Notification> result = notificationRepository.findAllByUserIdDesc(user.getId(), pageRequest);
+
     // then: 2개가 조회되고, 최신인 noti2가 먼저 나와야 함
     assertThat(result).hasSize(2);
     assertThat(result.get(0).getContent()).isEqualTo("알림2");
+  }
+
+  @Test
+  @DisplayName("커서 없이 알림 목록을 오래된순(오름차순)으로 조회할 수 있다")
+  @SuppressWarnings("SqlResolve")
+  void findAllByUserIdAsc() {
+    // given
+    User user = userRepository.save(User.create("test-asc@example.com", "testUser2", "password"));
+    Book book = bookRepository.save(new Book("도서 B", "저자 B", "설명 B", "출판사 B", LocalDate.of(2026, 1, 1), "9781234567891"));
+    Review review = reviewRepository.save(Review.create(user, book, "테스트 리뷰2", 5));
+    Notification noti1 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림1").type(NotificationType.REVIEW_LIKE).build());
+    Notification noti2 = notificationRepository.save(Notification.builder().user(user).review(review).content("알림2").type(NotificationType.NEW_COMMENT).build());
+
+    entityManager.createNativeQuery("UPDATE notifications SET created_at = :time WHERE id = :id")
+        .setParameter("time", LocalDateTime.now().minusHours(1))
+        .setParameter("id", noti1.getId())
+        .executeUpdate();
+
+    entityManager.clear(); // 1차 캐시 비우기
+
+    // when: 첫 페이지 조회 (커서 없음, 오름차순)
+    org.springframework.data.domain.PageRequest pageRequest = org.springframework.data.domain.PageRequest.of(0, 10);
+    List<Notification> result = notificationRepository.findAllByUserIdAsc(user.getId(), pageRequest);
+
+    // then: 오래된 noti1(1시간 전)이 먼저 나와야 함
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getContent()).isEqualTo("알림1");
   }
 }
